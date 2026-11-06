@@ -1,0 +1,17 @@
+{
+  "name": "pulse-runner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "An original geometric jump-and-dodge browser game.",
+  "license": "MIT",
+  "author": "Phillip Baruth",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/engine.test.mjs",
+    "dev": "node scripts/serve.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

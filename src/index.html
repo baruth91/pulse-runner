@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="Pulse runner: um jogo original de saltos e obstáculos geométricos. Jogue com espaço, clique ou toque."
+    />
+    <title>Pulse runner · encontre seu ritmo</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script type="module" src="./game.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <a class="wordmark" href="./" aria-label="Pulse runner, início"
+          ><span class="logo" aria-hidden="true"></span>PULSE<span
+            >RUNNER</span
+          ></a
+        ><span class="badge">UM TOQUE. MAIS UMA TENTATIVA.</span
+        ><button id="help" class="ghost">
+          Como jogar <span aria-hidden="true">↗</span>
+        </button>
+      </header>
+      <section class="intro">
+        <div>
+          <p class="eyebrow"><span></span> ARCADE DE PRECISÃO</p>
+          <h1>Encontre<br />seu <em>ritmo.</em></h1>
+        </div>
+        <div class="intro-aside">
+          <p>Um quadrado. Um caminho.<br />O próximo salto é com você.</p>
+          <div class="controls-hint">
+            <kbd>ESPAÇO</kbd><span>ou clique / toque</span>
+          </div>
+        </div>
+      </section>
+      <section class="arena" aria-label="Jogo Pulse runner">
+        <div class="hud">
+          <div>
+            <span class="hud-label">FASE 01</span
+            ><strong>Circuito inicial</strong>
+          </div>
+          <div class="hud-stat">
+            <span class="hud-label">TENTATIVA</span
+            ><strong id="attempts">00</strong>
+          </div>
+          <div class="hud-stat">
+            <span class="hud-label">MELHOR</span><strong id="best">0%</strong>
+          </div>
+          <button id="pause" class="ghost" disabled aria-label="Pausar jogo">
+            Ⅱ
+          </button>
+        </div>
+        <div
+          class="progress-track"
+          role="progressbar"
+          aria-label="Progresso da fase"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+        >
+          <span id="progress"></span>
+        </div>
+        <div class="stage">
+          <canvas
+            id="game"
+            width="1100"
+            height="360"
+            tabindex="0"
+            aria-label="Jogo de saltos. Use espaço ou seta para cima para saltar, P para pausar e R para reiniciar."
+          ></canvas>
+          <div id="overlay" class="overlay">
+            <div class="overlay-symbol" aria-hidden="true">◇</div>
+            <p id="overlay-kicker" class="eyebrow">SEU PRÓXIMO DESAFIO</p>
+            <h2 id="overlay-title">Entre no circuito.</h2>
+            <p id="overlay-copy">
+              Desvie dos obstáculos e chegue ao final.<br />Espaço, clique ou
+              toque para saltar.
+            </p>
+            <button id="play" class="primary">
+              Começar a jogar <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
+        <div class="arena-footer">
+          <span id="status" role="status">Pronto para começar</span
+          ><span><span class="mint-dot"></span> FEITO PARA TENTAR DE NOVO</span
+          ><button id="restart" class="ghost">↻ Reiniciar <kbd>R</kbd></button>
+        </div>
+      </section>
+      <section class="bottom">
+        <div>
+          <p class="eyebrow">ESCOLHA O RITMO</p>
+          <div class="modes" role="group" aria-label="Dificuldade">
+            <button data-mode="chill" aria-pressed="false">
+              <span class="mode-dot"></span>Tranquilo
+              <small>aprenda o caminho</small></button
+            ><button data-mode="pulse" aria-pressed="true">
+              <span class="mode-dot"></span>Pulsante
+              <small>ache seu tempo</small></button
+            ><button data-mode="rush" aria-pressed="false">
+              <span class="mode-dot"></span>Intenso
+              <small>confie no reflexo</small>
+            </button>
+          </div>
+        </div>
+        <div class="tip">
+          <span>01 /</span>
+          <p>
+            <strong>Um salto de cada vez.</strong><br />O caminho é fixo. A cada
+            tentativa,<br />você aprende um pouco mais.
+          </p>
+        </div>
+      </section>
+      <p id="mode-note" class="mode-note">
+        Trocar o ritmo reinicia a tentativa. Recordes são separados por
+        dificuldade e ficam neste navegador.
+      </p>
+      <footer>
+        <span
+          >© 2026 PULSE RUNNER <span class="sep">/</span> UM EXPERIMENTO DE
+          PHILLIP BARUTH</span
+        ><span>SEM LOGIN. SÓ O PRÓXIMO SALTO.</span>
+      </footer>
+    </main>
+    <dialog id="help-dialog" aria-labelledby="help-title">
+      <button
+        id="close-help"
+        class="ghost dialog-close"
+        aria-label="Fechar instruções"
+      >
+        ×
+      </button>
+      <p class="eyebrow">ANTES DO PRIMEIRO SALTO</p>
+      <h2 id="help-title">Simples de jogar.<br />Bom de dominar.</h2>
+      <ul>
+        <li>
+          <kbd>ESPAÇO</kbd> ou <kbd>↑</kbd>, clique ou toque na área do jogo:
+          saltar.
+        </li>
+        <li><kbd>P</kbd>: pausar ou continuar. <kbd>R</kbd>: recomeçar.</li>
+        <li>O quadrado avança sozinho. Você só precisa acertar o salto.</li>
+        <li>Evite pontas e blocos. Chegue a 100% para completar o circuito.</li>
+        <li>Ao trocar de aba, a partida pausa automaticamente.</li>
+        <li>Sem música ou flashes rápidos. Nenhum som é reproduzido.</li>
+      </ul>
+      <p class="help-note">
+        Jogo original inspirado em arcades geométricos de um botão. Sem vínculo
+        com Geometry Dash; código, arte e circuito próprios.
+      </p>
+    </dialog>
+  </body>
+</html>

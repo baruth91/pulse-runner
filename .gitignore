@@ -1,0 +1,8 @@
+node_modules/
+dist/
+reports/
+.openai/*.tar.gz
+.openai/*.log
+.openai/sites-tmp/
+.openai/sites-state/
+.env*
