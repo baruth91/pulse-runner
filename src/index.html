@@ -86,6 +86,34 @@
         ></div>
         <span id="skin-status" role="status" class="mode-note"></span>
       </section>
+      <section class="audio-controls" aria-label="Configurar áudio">
+        <button id="sound-toggle" class="ghost" aria-pressed="false">
+          Ativar som
+        </button>
+        <label
+          ><input id="music-toggle" type="checkbox" checked /> Música
+          eletrônica</label
+        >
+        <label
+          ><input id="effects-toggle" type="checkbox" checked /> Som da
+          colisão</label
+        >
+        <label class="volume-control" for="sound-volume"
+          >Volume
+          <input
+            id="sound-volume"
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value="35"
+          />
+          <output id="volume-value" for="sound-volume">35%</output></label
+        >
+        <span id="sound-status" class="mode-note" role="status"
+          >Trilha original · 128 BPM · ative o som para ouvir</span
+        >
+      </section>
       <section class="arena" aria-label="Jogo Pulse runner">
         <div class="hud">
           <div>
@@ -208,7 +236,11 @@
           No treino, retome do último checkpoint. Use “Do início” para recomeçar
           do zero. Treino não altera recordes.
         </li>
-        <li>Sem música ou flashes rápidos. Nenhum som é reproduzido.</li>
+        <li>
+          Ative o som para ouvir a trilha eletrônica e a colisão. Música e
+          efeitos têm controles separados. O som não indica o momento certo de
+          saltar.
+        </li>
       </ul>
       <p class="help-note">
         Jogo original inspirado em arcades geométricos de um botão. Sem vínculo

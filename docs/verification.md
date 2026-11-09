@@ -1,8 +1,8 @@
 # Verification
 
-Latest verification: 2026-11-09 (v0.3.0).
+Latest verification: 2026-11-09 (v0.4.0).
 
-- Fifteen deterministic tests passed.
+- Eighteen tests passed (15 gameplay/records, 3 audio lifecycle).
 - Static build completed without dependency installation.
 - Simulation verifies all three circuits can be completed at all three speeds.
 - Every practice checkpoint can restart safely and finish at the fastest speed.
@@ -18,6 +18,13 @@ Latest verification: 2026-11-09 (v0.3.0).
   during gameplay pauses safely, colored fragments appear on collision, and the
   result/retry controls return afterward. Reduced-motion handling was inspected
   in source; an emulated or physical reduced-motion acceptance check is pending.
+- v0.4 browser checks confirmed successful audio-context activation through the
+  button, volume adjustment, pause/resume, collision with audio enabled, saved
+  music/effect/volume preferences and master-off after reload. No console warnings
+  or errors were captured in that run. Speaker output and subjective musical
+  balance were not audibly verified through the browser automation interface.
+- Audio lifecycle tests verify explicit opt-in, independent collision effects,
+  mute, stopped voices/timers, bounded volume and paused state after late activation.
 
 Tests cover invalid modes, baseline collision, no double jump in midair, paused
 state invariance, triangle-edge collision, anti-tunneling substeps, approximate

@@ -11,6 +11,7 @@ import {
 } from "./engine.js";
 import { readRecords, recordAttempt, recordKey } from "./records.js";
 import { SKINS, getSkin, drawSkin, createFragments } from "./cosmetics.js";
+import { GameAudio } from "./audio.js";
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const overlay = document.getElementById("overlay");
@@ -19,6 +20,81 @@ const pauseButton = document.getElementById("pause");
 const help = document.getElementById("help-dialog");
 const status = document.getElementById("status");
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const audio = new GameAudio();
+const soundButton = document.getElementById("sound-toggle");
+const soundStatus = document.getElementById("sound-status");
+const audioPrefs = storedRecords("pulse-runner-audio-v1");
+if (audioPrefs && typeof audioPrefs === "object") {
+  audio.music = audioPrefs.music !== false;
+  audio.effects = audioPrefs.effects !== false;
+  if (
+    typeof audioPrefs.volume === "number" &&
+    Number.isFinite(audioPrefs.volume)
+  )
+    audio.setVolume(audioPrefs.volume);
+}
+document.getElementById("music-toggle").checked = audio.music;
+document.getElementById("effects-toggle").checked = audio.effects;
+document.getElementById("sound-volume").value = Math.round(audio.volume * 100);
+document.getElementById("volume-value").textContent =
+  `${Math.round(audio.volume * 100)}%`;
+function saveAudioPrefs() {
+  try {
+    localStorage.setItem(
+      "pulse-runner-audio-v1",
+      JSON.stringify({
+        music: audio.music,
+        effects: audio.effects,
+        volume: audio.volume,
+      }),
+    );
+  } catch {
+    /* Optional storage. */
+  }
+}
+function syncAudio() {
+  audio.running = state.status === "running" && !document.hidden;
+  audio.sync();
+}
+soundButton.addEventListener("click", async () => {
+  audio.enabled = !audio.enabled;
+  const enabled = audio.enabled;
+  soundButton.setAttribute("aria-pressed", String(enabled));
+  soundButton.textContent = enabled ? "Desligar som" : "Ativar som";
+  if (!enabled) {
+    audio.silence();
+    soundStatus.textContent = "Som desligado";
+    return;
+  }
+  try {
+    await audio.activate();
+    syncAudio();
+    if (audio.enabled)
+      soundStatus.textContent = "Som ativado · a trilha toca durante a partida";
+  } catch {
+    audio.enabled = false;
+    audio.silence();
+    soundButton.setAttribute("aria-pressed", "false");
+    soundButton.textContent = "Ativar som";
+    soundStatus.textContent =
+      "Áudio indisponível. Você pode continuar jogando sem som.";
+  }
+});
+for (const [id, property] of [
+  ["music-toggle", "music"],
+  ["effects-toggle", "effects"],
+])
+  document.getElementById(id).addEventListener("change", (event) => {
+    audio[property] = event.target.checked;
+    syncAudio();
+    saveAudioPrefs();
+  });
+document.getElementById("sound-volume").addEventListener("input", (event) => {
+  audio.setVolume(Number(event.target.value) / 100);
+  document.getElementById("volume-value").textContent =
+    `${event.target.value}%`;
+  saveAudioPrefs();
+});
 let skin = getSkin(storedRecords("pulse-runner-skin-v1"));
 let impact = null;
 function selectSkin(id, announce = true) {
@@ -141,10 +217,20 @@ function start() {
   updateRecords();
   lastTime = performance.now();
   canvas.focus({ preventScroll: true });
+  if (audio.enabled)
+    void audio
+      .activate()
+      .then(syncAudio)
+      .catch(() => {
+        soundStatus.textContent =
+          "Não foi possível retomar o áudio. Desligue e ative o som novamente.";
+      });
+  syncAudio();
 }
 function pause() {
   if (state.status !== "running") return;
   state.status = "paused";
+  audio.silence();
   pauseButton.textContent = "▶";
   pauseButton.setAttribute("aria-label", "Continuar jogo");
   status.textContent = "Partida pausada";
@@ -166,6 +252,7 @@ function jump() {
   else start();
 }
 function selectRun() {
+  audio.silence();
   impact = null;
   state = createState(mode, levelId, practice);
   obstacles = createLevel(levelId);
@@ -240,8 +327,12 @@ document.addEventListener("keydown", (event) => {
   }
 });
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) pause();
+  if (document.hidden) {
+    pause();
+    audio.silence();
+  }
 });
+window.addEventListener("pagehide", () => audio.silence());
 document.getElementById("help").addEventListener("click", () => {
   pause();
   help.showModal();
@@ -445,6 +536,8 @@ function frame(timestamp) {
   document.getElementById("from-start").hidden =
     !practice || state.checkpoint === 0;
   if (previous === "running" && ["dead", "won"].includes(state.status)) {
+    audio.silence();
+    if (state.status === "dead") audio.crash();
     saveBest();
     pauseButton.disabled = true;
     if (state.status === "dead") {

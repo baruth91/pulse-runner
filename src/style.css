@@ -678,3 +678,38 @@ dialog li {
 #skin-status:empty {
   display: none;
 }
+.audio-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin: 0 0 22px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.audio-controls label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.audio-controls input {
+  accent-color: var(--mint);
+}
+.audio-controls input[type="range"] {
+  width: 100px;
+}
+.audio-controls output {
+  min-width: 30px;
+  font-variant-numeric: tabular-nums;
+}
+.audio-controls #sound-status {
+  flex-basis: 100%;
+  margin: 0;
+}
+#sound-toggle[aria-pressed="true"] {
+  border-color: var(--mint);
+  color: var(--mint);
+}

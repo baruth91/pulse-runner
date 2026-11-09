@@ -18,6 +18,10 @@ Canvas 2D art, physics and interface are implemented without runtime dependencie
   a skin during a run pauses it. The choice is saved locally when storage works.
 - On collision, the character breaks into 16 colored fragments before the result
   appears. Reduced-motion preference disables the breakup and its short delay.
+- Click Ativar som to enable the original 128 BPM electronic synth loop and
+  collision sound. Music and impact effects can be switched separately; volume
+  and these preferences are saved locally. Audio starts disabled after reload.
+  Music plays only during a run; pause, hidden page and results stop the loop.
 - Best percentage is stored locally per circuit and difficulty, when storage is available.
   Practice never updates ranked bests. Original-circuit bests migrate from v0.1.
 
@@ -49,8 +53,17 @@ does not automatically make that hosted preview public.
 - src/game.js: input, canvas drawing, pause/death/completion flow and local best.
 - src/records.js: validated local records, migration and practice exclusion.
 - src/cosmetics.js: original skin artwork and bounded collision fragment data.
+- src/audio.js: Web Audio synthesis, look-ahead sequencer and voice cleanup.
 - src/style.css: responsive arcade page, reduced decorative motion.
 - tests/engine.test.mjs: 15 tests, including all circuits at every speed and checkpoint recovery.
+- tests/audio.test.mjs: 3 lifecycle tests for opt-in, pause cleanup, mute, effects
+  independence and late activation. These use an audio-context double, not speakers.
+
+The soundtrack combines synthesized kick, snare, hats, bass and a melodic minor
+progression. No recordings or external music services are used. A short look-ahead
+scheduler uses the audio clock; physics remains independent, so beats are atmosphere,
+not jump cues. Audio requires browser Web Audio support and a user gesture. If it
+cannot start, the game remains playable without sound.
 
 The collision hitbox is slightly inset and axis-aligned even while the square
 visually rotates. This is a forgiving gameplay choice. Fixed small simulation
@@ -60,7 +73,7 @@ visibility pause prevents a hidden page silently advancing.
 
 ## Next possible increments
 
-Optional original audio, configurable controls, full
+Configurable controls, full
 localization and human playtesting for difficulty/accessibility. These are ideas,
 not implemented features. Keyboard and DOM controls are available; the animated
 canvas does not provide an equivalent screen-reader gameplay experience.
