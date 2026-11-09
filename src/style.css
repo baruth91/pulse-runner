@@ -1,3 +1,114 @@
+.circuit-picker {
+  margin: 0 0 22px;
+}
+.picker-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.picker-header .eyebrow {
+  margin: 0;
+}
+.practice-switch {
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.practice-switch input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--mint);
+}
+.level-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+.level-buttons button {
+  padding: 15px;
+  text-align: left;
+  color: var(--text);
+  background: #17221e;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  min-width: 0;
+}
+.level-buttons button[aria-pressed="true"] {
+  border-color: var(--mint);
+  background: #b9f27809;
+}
+.level-buttons button > span:first-child {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--mint);
+}
+.level-buttons strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 550;
+  margin: 6px 0;
+}
+.level-buttons small {
+  font-size: 10px;
+  line-height: 1.5;
+  display: block;
+  color: var(--muted);
+}
+.level-best {
+  font-size: 9px;
+  color: var(--mint);
+  display: block;
+  margin-top: 10px;
+}
+.circuit-picker .mode-note {
+  margin-bottom: 0;
+}
+.result-summary {
+  color: var(--mint) !important;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px !important;
+  margin: 0 0 12px !important;
+}
+.result-summary[hidden],
+#next-level[hidden],
+#from-start[hidden] {
+  display: none;
+}
+#next-level {
+  margin-top: 8px;
+  padding: 7px 16px;
+}
+.restart-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.stage:has(#result-summary:not([hidden])) .overlay-symbol {
+  display: none;
+}
+@media (max-width: 720px) {
+  .level-buttons {
+    gap: 6px;
+  }
+  .level-buttons button {
+    padding: 11px 8px;
+  }
+  .level-buttons strong {
+    font-size: 11px;
+  }
+  .level-buttons small {
+    font-size: 9px;
+  }
+  .picker-header .eyebrow {
+    font-size: 8px;
+  }
+}
 :root {
   --bg: #101715;
   --panel: #17221e;

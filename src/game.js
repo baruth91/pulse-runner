@@ -3,9 +3,13 @@ import {
   createLevel,
   update,
   requestJump,
-  FINISH,
+  LEVELS,
+  getLevel,
+  checkpointDistances,
+  restartState,
   SIZE,
 } from "./engine.js";
+import { readRecords, recordAttempt, recordKey } from "./records.js";
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const overlay = document.getElementById("overlay");
@@ -14,48 +18,69 @@ const pauseButton = document.getElementById("pause");
 const help = document.getElementById("help-dialog");
 const status = document.getElementById("status");
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const obstacles = createLevel();
 let mode = "pulse",
-  state = createState(mode),
-  attempts = 0,
+  levelId = "circuit",
+  practice = false;
+let obstacles = createLevel(levelId),
+  state = createState(mode, levelId, practice);
+let attempts = 0,
   lastTime = 0,
   width = 1100,
   height = 360;
-let best = { chill: 0, pulse: 0, rush: 0 };
-try {
-  const saved = JSON.parse(
-    localStorage.getItem("pulse-runner-best-v1") || "{}",
-  );
-  for (const key of Object.keys(best))
-    if (Number.isFinite(saved[key]) && saved[key] >= 0 && saved[key] <= 100)
-      best[key] = saved[key];
-} catch {
-  /* Playable even when storage is unavailable. */
+let best = readRecords(null);
+let lastCheckpoint = 0;
+document.getElementById("practice").checked = false;
+function storedRecords(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key) || "null");
+  } catch {
+    return null; // One corrupt version must not discard another valid version.
+  }
 }
+best = readRecords(
+  storedRecords("pulse-runner-best-v2"),
+  storedRecords("pulse-runner-best-v1"),
+);
 function progress() {
-  return Math.min(100, Math.floor((state.distance / FINISH) * 100));
+  return Math.min(
+    100,
+    Math.floor((state.distance / getLevel(levelId).finish) * 100),
+  );
+}
+function updateRecords() {
+  document.getElementById("best-label").textContent = practice
+    ? "CHECKPOINT"
+    : "MELHOR";
+  document.getElementById("best").textContent = practice
+    ? `${Math.floor((state.checkpoint / getLevel(levelId).finish) * 100)}%`
+    : `${best[recordKey(levelId, mode)]}%`;
+  for (const level of LEVELS)
+    document.getElementById(`best-${level.id}`).textContent =
+      `Sem treino: ${best[recordKey(level.id, mode)]}%`;
 }
 function saveBest() {
-  best[mode] = Math.max(best[mode], progress());
-  try {
-    localStorage.setItem("pulse-runner-best-v1", JSON.stringify(best));
-  } catch {
-    /* Session scores still work. */
-  }
-  document.getElementById("best").textContent = `${best[mode]}%`;
+  best = recordAttempt(best, state);
+  if (!state.practice)
+    try {
+      localStorage.setItem("pulse-runner-best-v2", JSON.stringify(best));
+    } catch {
+      /* No storage is required to play. */
+    }
+  updateRecords();
 }
 function overlayText(kicker, title, description, button) {
   document.getElementById("overlay-kicker").textContent = kicker;
   document.getElementById("overlay-title").textContent = title;
   document.getElementById("overlay-copy").textContent = description;
+  document.getElementById("result-summary").hidden = true;
+  document.getElementById("next-level").hidden = true;
   play.textContent = button;
   overlay.hidden = false;
 }
 function start() {
-  if (state.status === "paused") {
-    state.status = "running";
-  } else {
-    state = createState(mode);
+  if (state.status === "paused") state.status = "running";
+  else {
+    if (state.status !== "ready") state = restartState(state);
     state.status = "running";
     attempts++;
     document.getElementById("attempts").textContent = String(attempts).padStart(
@@ -63,11 +88,15 @@ function start() {
       "0",
     );
   }
+  lastCheckpoint = state.checkpoint;
   overlay.hidden = true;
   pauseButton.disabled = false;
   pauseButton.textContent = "Ⅱ";
   pauseButton.setAttribute("aria-label", "Pausar jogo");
-  status.textContent = "No circuito · espaço / clique / toque para saltar";
+  status.textContent = practice
+    ? "Treino ativo · checkpoints não contam para recordes"
+    : "No circuito · espaço / clique / toque para saltar";
+  updateRecords();
   lastTime = performance.now();
   canvas.focus({ preventScroll: true });
 }
@@ -84,9 +113,9 @@ function pause() {
     "Continuar →",
   );
 }
-function reset() {
+function reset(fromBeginning = false) {
   saveBest();
-  state = createState(mode);
+  state = restartState(state, fromBeginning);
   start();
 }
 function jump() {
@@ -94,8 +123,49 @@ function jump() {
   if (state.status === "running") requestJump(state);
   else start();
 }
+function selectRun() {
+  state = createState(mode, levelId, practice);
+  obstacles = createLevel(levelId);
+  attempts = 0;
+  lastCheckpoint = 0;
+  document.getElementById("attempts").textContent = "00";
+  const level = getLevel(levelId);
+  document.getElementById("level-number").textContent =
+    `FASE ${level.number}${practice ? " · TREINO" : ""}`;
+  document.getElementById("level-name").textContent = level.name;
+  document
+    .querySelectorAll("[data-level]")
+    .forEach((button) =>
+      button.setAttribute(
+        "aria-pressed",
+        String(button.dataset.level === levelId),
+      ),
+    );
+  document
+    .querySelectorAll("[data-mode]")
+    .forEach((button) =>
+      button.setAttribute("aria-pressed", String(button.dataset.mode === mode)),
+    );
+  document.getElementById("from-start").hidden = true;
+  pauseButton.disabled = true;
+  status.textContent = practice
+    ? "Treino selecionado · sem alterar recordes"
+    : "Circuito escolhido · pronto para começar";
+  overlayText(
+    practice ? "APRENDA UM TRECHO DE CADA VEZ" : `CIRCUITO ${level.number}`,
+    level.name,
+    practice
+      ? "Checkpoints guardam seu avanço nesta sessão. Após errar, continue do último trecho salvo."
+      : level.description,
+    "Começar a jogar →",
+  );
+  updateRecords();
+}
 play.addEventListener("click", start);
-document.getElementById("restart").addEventListener("click", reset);
+document.getElementById("restart").addEventListener("click", () => reset());
+document
+  .getElementById("from-start")
+  .addEventListener("click", () => reset(true));
 pauseButton.addEventListener("click", () =>
   state.status === "paused" ? start() : pause(),
 );
@@ -110,10 +180,12 @@ document.addEventListener("keydown", (event) => {
     event.repeat ||
     event.ctrlKey ||
     event.metaKey ||
-    event.altKey
+    event.altKey ||
+    event.target.closest?.("input,select,textarea,[contenteditable]")
   )
     return;
   if (["Space", "ArrowUp"].includes(event.code)) {
+    if (event.target.closest?.("button,a")) return;
     event.preventDefault();
     jump();
   } else if (event.code === "KeyP") {
@@ -138,24 +210,27 @@ document.querySelectorAll("[data-mode]").forEach((button) =>
   button.addEventListener("click", () => {
     saveBest();
     mode = button.dataset.mode;
-    state = createState(mode);
-    document
-      .querySelectorAll("[data-mode]")
-      .forEach((item) =>
-        item.setAttribute("aria-pressed", String(item === button)),
-      );
-    document.getElementById("best").textContent = `${best[mode]}%`;
-    pauseButton.disabled = true;
-    status.textContent = "Ritmo escolhido · pronto para começar";
-    overlayText(
-      "ENCONTRE SEU RITMO",
-      "Um novo começo.",
-      "O mesmo circuito, uma velocidade diferente. Vamos?",
-      "Começar a jogar →",
-    );
+    selectRun();
   }),
 );
-document.getElementById("best").textContent = `${best[mode]}%`;
+document.querySelectorAll("[data-level]").forEach((button) =>
+  button.addEventListener("click", () => {
+    saveBest();
+    levelId = button.dataset.level;
+    selectRun();
+  }),
+);
+document.getElementById("practice").addEventListener("change", (event) => {
+  saveBest();
+  practice = event.target.checked;
+  selectRun();
+});
+document.getElementById("next-level").addEventListener("click", () => {
+  const index = LEVELS.findIndex((level) => level.id === levelId);
+  levelId = LEVELS[(index + 1) % LEVELS.length].id;
+  selectRun();
+});
+updateRecords();
 
 function resize() {
   const rect = canvas.getBoundingClientRect(),
@@ -234,7 +309,26 @@ function draw() {
         "#ff9b8055",
       );
   }
-  const finishX = FINISH - shift + playerX;
+  if (practice)
+    for (const point of checkpointDistances(levelId)) {
+      const x = point - shift + playerX;
+      if (x < -20 || x > width + 20) continue;
+      line(
+        x,
+        floor - 65,
+        x,
+        floor,
+        state.checkpoint >= point ? "#b9f278" : "#a1b7b080",
+        1,
+      );
+      ctx.fillStyle = state.checkpoint >= point ? "#b9f278" : "#a1b7b080";
+      ctx.beginPath();
+      ctx.moveTo(x, floor - 65);
+      ctx.lineTo(x + 14, floor - 58);
+      ctx.lineTo(x, floor - 51);
+      ctx.fill();
+    }
+  const finishX = getLevel(levelId).finish - shift + playerX;
   if (finishX < width + 30) {
     line(finishX, 30, finishX, floor, "#b9f278", 2);
     ctx.fillStyle = "#b9f278";
@@ -278,26 +372,46 @@ function frame(timestamp) {
   lastTime = timestamp;
   const previous = state.status;
   update(state, elapsed, obstacles);
+  if (state.checkpoint > lastCheckpoint) {
+    lastCheckpoint = state.checkpoint;
+    updateRecords();
+    status.textContent = `Checkpoint salvo · ${Math.floor((state.checkpoint / getLevel(levelId).finish) * 100)}% · treino`;
+  }
+  document.getElementById("from-start").hidden =
+    !practice || state.checkpoint === 0;
   if (previous === "running" && ["dead", "won"].includes(state.status)) {
     saveBest();
     pauseButton.disabled = true;
     if (state.status === "dead") {
-      status.textContent = `Tentativa encerrada · ${progress()}% do circuito`;
+      status.textContent = `Tentativa encerrada · ${progress()}%${practice ? " · treino" : ""}`;
       overlayText(
-        "O PRÓXIMO SALTO VEM AÍ",
+        practice ? "UM TRECHO DE CADA VEZ" : "O PRÓXIMO SALTO VEM AÍ",
         "Mais uma tentativa?",
-        `Você chegou a ${progress()}%. O caminho continua igual; agora você conhece um pouco mais.`,
-        "Tentar de novo →",
+        practice && state.checkpoint > 0
+          ? `Seu checkpoint está em ${Math.floor((state.checkpoint / getLevel(levelId).finish) * 100)}%. Retome o trecho ou escolha Do início.`
+          : `Você chegou a ${progress()}%. Cada tentativa ensina um pouco mais.`,
+        practice && state.checkpoint > 0
+          ? "Retomar checkpoint →"
+          : "Tentar de novo →",
       );
     } else {
-      status.textContent = "Circuito completo!";
+      status.textContent = practice
+        ? "Circuito concluído em treino · sem recorde"
+        : "Circuito completo!";
       overlayText(
-        "CIRCUITO COMPLETO",
+        practice ? "TREINO CONCLUÍDO" : "CIRCUITO COMPLETO",
         "Você encontrou o ritmo.",
-        `${state.jumps} saltos. Um circuito completo. Que tal outro ritmo?`,
+        practice
+          ? "Agora experimente completar este caminho sem checkpoints."
+          : "Belo percurso. Experimente outro circuito ou outro ritmo.",
         "Jogar novamente →",
       );
+      document.getElementById("next-level").hidden = false;
     }
+    const summary = document.getElementById("result-summary");
+    summary.textContent = `${progress()}% · ${state.jumps} saltos nesta tentativa · ${practice ? "treino" : "sem assistência"}`;
+    summary.hidden = false;
+    if (document.activeElement === canvas) play.focus({ preventScroll: true });
   }
   const current = progress();
   document.getElementById("progress").style.width = `${current}%`;

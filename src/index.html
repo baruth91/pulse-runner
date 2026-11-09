@@ -35,18 +35,58 @@
           </div>
         </div>
       </section>
+      <section class="circuit-picker" aria-label="Escolher circuito">
+        <div class="picker-header">
+          <p class="eyebrow">TRÊS CAMINHOS. SEU PRÓPRIO RITMO.</p>
+          <label class="practice-switch"
+            ><input
+              id="practice"
+              type="checkbox"
+              aria-describedby="practice-note"
+            />
+            Treino com checkpoints</label
+          >
+        </div>
+        <div
+          id="level-buttons"
+          class="level-buttons"
+          role="group"
+          aria-label="Circuitos"
+        >
+          <button data-level="circuit" aria-pressed="true">
+            <span>01</span><strong>Circuito inicial</strong
+            ><small>Aprenda o salto e encontre seu tempo.</small
+            ><span class="level-best" id="best-circuit">Melhor: 0%</span>
+          </button>
+          <button data-level="switchback" aria-pressed="false">
+            <span>02</span><strong>Quebra-ritmo</strong
+            ><small>Novas sequências, intervalos diferentes.</small
+            ><span class="level-best" id="best-switchback">Melhor: 0%</span>
+          </button>
+          <button data-level="momentum" aria-pressed="false">
+            <span>03</span><strong>Impulso final</strong
+            ><small>Mais obstáculos. Mais precisão.</small
+            ><span class="level-best" id="best-momentum">Melhor: 0%</span>
+          </button>
+        </div>
+        <p id="practice-note" class="mode-note">
+          Treine os trechos com checkpoints. Recordes valem apenas sem treino.
+          Trocar circuito, ritmo ou modo inicia uma nova tentativa.
+        </p>
+      </section>
       <section class="arena" aria-label="Jogo Pulse runner">
         <div class="hud">
           <div>
-            <span class="hud-label">FASE 01</span
-            ><strong>Circuito inicial</strong>
+            <span class="hud-label" id="level-number">FASE 01</span
+            ><strong id="level-name">Circuito inicial</strong>
           </div>
           <div class="hud-stat">
             <span class="hud-label">TENTATIVA</span
             ><strong id="attempts">00</strong>
           </div>
           <div class="hud-stat">
-            <span class="hud-label">MELHOR</span><strong id="best">0%</strong>
+            <span class="hud-label" id="best-label">MELHOR</span
+            ><strong id="best">0%</strong>
           </div>
           <button id="pause" class="ghost" disabled aria-label="Pausar jogo">
             Ⅱ
@@ -78,15 +118,24 @@
               Desvie dos obstáculos e chegue ao final.<br />Espaço, clique ou
               toque para saltar.
             </p>
+            <p id="result-summary" class="result-summary" hidden></p>
             <button id="play" class="primary">
               Começar a jogar <span aria-hidden="true">→</span>
+            </button>
+            <button id="next-level" class="ghost" hidden>
+              Próximo circuito →
             </button>
           </div>
         </div>
         <div class="arena-footer">
           <span id="status" role="status">Pronto para começar</span
-          ><span><span class="mint-dot"></span> FEITO PARA TENTAR DE NOVO</span
-          ><button id="restart" class="ghost">↻ Reiniciar <kbd>R</kbd></button>
+          ><span><span class="mint-dot"></span> FEITO PARA TENTAR DE NOVO</span>
+          <div class="restart-actions">
+            <button id="from-start" class="ghost" hidden>Do início</button
+            ><button id="restart" class="ghost">
+              ↻ Reiniciar <kbd>R</kbd>
+            </button>
+          </div>
         </div>
       </section>
       <section class="bottom">
@@ -114,8 +163,8 @@
         </div>
       </section>
       <p id="mode-note" class="mode-note">
-        Trocar o ritmo reinicia a tentativa. Recordes são separados por
-        dificuldade e ficam neste navegador.
+        Recordes são separados por circuito e dificuldade e ficam neste
+        navegador.
       </p>
       <footer>
         <span
@@ -143,6 +192,10 @@
         <li>O quadrado avança sozinho. Você só precisa acertar o salto.</li>
         <li>Evite pontas e blocos. Chegue a 100% para completar o circuito.</li>
         <li>Ao trocar de aba, a partida pausa automaticamente.</li>
+        <li>
+          No treino, retome do último checkpoint. Use “Do início” para recomeçar
+          do zero. Treino não altera recordes.
+        </li>
         <li>Sem música ou flashes rápidos. Nenhum som é reproduzido.</li>
       </ul>
       <p class="help-note">

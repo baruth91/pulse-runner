@@ -7,13 +7,18 @@ Canvas 2D art, physics and interface are implemented without runtime dependencie
 ## Play
 
 - Space, Up arrow, left click or touch on the game canvas: jump.
-- P: pause/resume. R: restart.
-- Choose Tranquilo, Pulsante or Intenso for three speeds of the same circuit.
+- P: pause/resume. R: restart (from the checkpoint when practicing).
+- Choose one of three authored circuits, then Tranquilo, Pulsante or Intenso.
+- Enable practice to unlock safe checkpoints as you advance on the ground.
+  Retry from the last checkpoint, or choose Do início to reset the whole run.
+  Checkpoints last only for the current session and reset when changing options.
 - The game pauses when the page is hidden. Start again with Continue.
-- Best percentage is stored locally per difficulty, when browser storage is available.
+- Best percentage is stored locally per circuit and difficulty, when storage is available.
+  Practice never updates ranked bests. Original-circuit bests migrate from v0.1.
 
-There is one authored circuit. Three difficulties are speeds, not three separate
-levels. There is no audio/music synchronization, login, network leaderboard or
+There are three circuits with different obstacle sequences and three speeds each.
+The result screen shows progress and jumps for the attempt; finishing offers the
+next circuit. There is no audio/music synchronization, login, network leaderboard or
 in-app purchase. Progress is an informal local best, not a trusted online score.
 The interface is Portuguese; source and developer documentation are English.
 
@@ -37,8 +42,9 @@ does not automatically make that hosted preview public.
 
 - src/engine.js: deterministic physics, fixed steps, buffered jump and SAT collision.
 - src/game.js: input, canvas drawing, pause/death/completion flow and local best.
+- src/records.js: validated local records, migration and practice exclusion.
 - src/style.css: responsive arcade page, reduced decorative motion.
-- tests/engine.test.mjs: nine tests, including a simulated run that finishes in all modes.
+- tests/engine.test.mjs: 15 tests, including all circuits at every speed and checkpoint recovery.
 
 The collision hitbox is slightly inset and axis-aligned even while the square
 visually rotates. This is a forgiving gameplay choice. Fixed small simulation
@@ -48,7 +54,7 @@ visibility pause prevents a hidden page silently advancing.
 
 ## Next possible increments
 
-More authored circuits, optional original audio, configurable controls, full
+Optional original audio, configurable controls, full
 localization and human playtesting for difficulty/accessibility. These are ideas,
 not implemented features. Keyboard and DOM controls are available; the animated
 canvas does not provide an equivalent screen-reader gameplay experience.

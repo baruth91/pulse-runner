@@ -8,7 +8,12 @@ import {
   collides,
   SPEEDS,
   FINISH,
+  LEVELS,
+  getLevel,
+  checkpointDistances,
+  restartState,
 } from "../src/engine.js";
+import { readRecords, recordAttempt, recordKey } from "../src/records.js";
 test("unknown and inherited mode names are rejected", () => {
   assert.throws(() => createState("invalid"));
   assert.throws(() => createState("toString"));
@@ -65,30 +70,126 @@ test("normal render rates produce equivalent physical results", () => {
   assert.ok(Math.abs(a.distance - b.distance) < 2);
   assert.equal(a.y, b.y);
 });
-test("the fixed circuit is completable in each difficulty using grounded jumps", () => {
-  for (const mode of Object.keys(SPEEDS)) {
-    const state = createState(mode);
-    state.status = "running";
-    const obstacles = createLevel();
-    for (let frame = 0; frame < 20000 && state.status === "running"; frame++) {
-      const next = obstacles.find(
-        (item) => item.x + item.width > state.distance + 3,
+test("every authored circuit is completable in each difficulty using grounded jumps", () => {
+  for (const level of LEVELS) {
+    for (const mode of Object.keys(SPEEDS)) {
+      const state = createState(mode, level.id);
+      state.status = "running";
+      const obstacles = createLevel(level.id);
+      for (
+        let frame = 0;
+        frame < 20000 && state.status === "running";
+        frame++
+      ) {
+        const next = obstacles.find(
+          (item) => item.x + item.width > state.distance + 3,
+        );
+        if (
+          next &&
+          state.y === 0 &&
+          next.x - state.distance <= SPEEDS[mode] * 0.3
+        )
+          requestJump(state);
+        update(state, 1 / 120, obstacles);
+      }
+      assert.equal(
+        state.status,
+        "won",
+        `${level.id}/${mode} should be completable at ${state.distance}`,
       );
-      if (
-        next &&
-        state.y === 0 &&
-        next.x - state.distance <= SPEEDS[mode] * 0.3
-      )
-        requestJump(state);
-      update(state, 1 / 120, obstacles);
+      assert.equal(state.distance, level.finish);
     }
-    assert.equal(
-      state.status,
-      "won",
-      `${mode} should be completable at ${state.distance}`,
-    );
-    assert.equal(state.distance, FINISH);
   }
+});
+
+test("new circuits have distinct authored patterns and preserve the original finish", () => {
+  assert.equal(getLevel().finish, FINISH);
+  assert.notDeepEqual(createLevel("circuit"), createLevel("switchback"));
+  assert.notDeepEqual(createLevel("switchback"), createLevel("momentum"));
+  assert.throws(() => createState("pulse", "missing"));
+});
+test("practice checkpoints activate only after reaching grounded progress", () => {
+  const state = createState("rush", "circuit", true);
+  const point = checkpointDistances()[0];
+  state.distance = point - 1;
+  state.y = 50;
+  state.status = "running";
+  update(state, 0.05, []);
+  assert.equal(state.checkpoint, 0);
+  state.y = 0;
+  state.velocity = 0;
+  update(state, 0.01, []);
+  assert.equal(state.checkpoint, point);
+  const normal = createState("rush");
+  normal.distance = point + 5;
+  normal.status = "running";
+  update(normal, 0.01, []);
+  assert.equal(normal.checkpoint, 0);
+});
+test("each checkpoint restarts safely and can finish at the highest speed", () => {
+  for (const level of LEVELS)
+    for (const point of checkpointDistances(level.id)) {
+      const previous = createState("rush", level.id, true);
+      previous.checkpoint = point;
+      previous.status = "dead";
+      previous.y = 80;
+      previous.jumpBuffer = 1;
+      const state = restartState(previous);
+      state.status = "running";
+      assert.equal(state.distance, point);
+      assert.equal(state.y, 0);
+      assert.equal(state.jumpBuffer, 0);
+      const obstacles = createLevel(level.id);
+      assert.equal(
+        obstacles.some((obstacle) => collides(state, obstacle)),
+        false,
+      );
+      for (
+        let frame = 0;
+        frame < 15000 && state.status === "running";
+        frame++
+      ) {
+        const next = obstacles.find(
+          (obstacle) => obstacle.x + obstacle.width > state.distance + 3,
+        );
+        if (
+          next &&
+          state.y === 0 &&
+          next.x - state.distance <= SPEEDS.rush * 0.3
+        )
+          requestJump(state);
+        update(state, 1 / 120, obstacles);
+      }
+      assert.equal(state.status, "won", `${level.id} checkpoint ${point}`);
+    }
+});
+test("restart from beginning clears checkpoint and ordinary runs never inherit one", () => {
+  const state = createState("pulse", "switchback", true);
+  state.checkpoint = checkpointDistances("switchback")[0];
+  state.status = "dead";
+  assert.equal(restartState(state, true).distance, 0);
+  state.practice = false;
+  assert.equal(restartState(state).distance, 0);
+});
+test("legacy records migrate only to the unchanged original circuit", () => {
+  const records = readRecords(null, { chill: 40, pulse: 100, rush: -1 });
+  assert.equal(records[recordKey("circuit", "chill")], 40);
+  assert.equal(records[recordKey("switchback", "chill")], 0);
+  assert.equal(records[recordKey("circuit", "rush")], 0);
+  assert.equal(readRecords({ "momentum:rush": 999 })["momentum:rush"], 0);
+});
+test("practice attempts cannot set records and ranked scores stay scoped to level and speed", () => {
+  const records = readRecords(null);
+  const practice = createState("pulse", "circuit", true);
+  practice.distance = FINISH;
+  assert.deepEqual(recordAttempt(records, practice), records);
+  const normal = createState("rush", "switchback");
+  normal.distance = getLevel("switchback").finish;
+  const next = recordAttempt(records, normal);
+  assert.equal(next["switchback:rush"], 100);
+  assert.equal(next["circuit:rush"], 0);
+  assert.equal(next["switchback:pulse"], 0);
+  assert.equal(records["switchback:rush"], 0);
 });
 test("dead and completed states are stable until an explicit restart", () => {
   for (const status of ["dead", "won"]) {

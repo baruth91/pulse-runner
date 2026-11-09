@@ -4,8 +4,37 @@ export const JUMP = 650;
 export const SPEEDS = { chill: 235, pulse: 285, rush: 335 };
 export const FINISH = 7800;
 export const FIXED_STEP = 1 / 240;
+export const LEVELS = [
+  {
+    id: "circuit",
+    name: "Circuito inicial",
+    number: "01",
+    finish: FINISH,
+    description: "Aprenda o salto e encontre seu tempo.",
+  },
+  {
+    id: "switchback",
+    name: "Quebra-ritmo",
+    number: "02",
+    finish: 6600,
+    description: "Novas sequências, intervalos diferentes.",
+  },
+  {
+    id: "momentum",
+    name: "Impulso final",
+    number: "03",
+    finish: 8000,
+    description: "Mais obstáculos. Mais precisão.",
+  },
+];
+export function getLevel(id = "circuit") {
+  const level = LEVELS.find((item) => item.id === id);
+  if (!level) throw new Error("Unknown level");
+  return level;
+}
 
-export function createLevel() {
+export function createLevel(id = "circuit") {
+  getLevel(id);
   const obstacles = [];
   const pattern = [
     "spike",
@@ -22,8 +51,42 @@ export function createLevel() {
     "double",
     "block",
   ];
-  pattern.forEach((type, index) => {
-    const x = 850 + index * 510;
+  const authored =
+    id === "switchback"
+      ? [
+          [850, "spike"],
+          [1240, "block"],
+          [1770, "double"],
+          [2180, "spike"],
+          [2780, "block"],
+          [3190, "double"],
+          [3650, "block"],
+          [4220, "spike"],
+          [4700, "double"],
+          [5170, "block"],
+          [5710, "double"],
+        ]
+      : id === "momentum"
+        ? [
+            [850, "double"],
+            [1200, "block"],
+            [1640, "spike"],
+            [2020, "double"],
+            [2490, "block"],
+            [2870, "double"],
+            [3330, "spike"],
+            [3700, "block"],
+            [4180, "double"],
+            [4540, "spike"],
+            [5040, "block"],
+            [5430, "double"],
+            [5900, "block"],
+            [6280, "double"],
+            [6740, "spike"],
+            [7150, "double"],
+          ]
+        : pattern.map((type, index) => [850 + index * 510, type]);
+  authored.forEach(([x, type]) => {
     if (type === "block")
       obstacles.push({ x, width: 42, height: 48, type: "block" });
     else {
@@ -34,10 +97,19 @@ export function createLevel() {
   });
   return obstacles;
 }
-export function createState(mode = "pulse") {
+export function createState(
+  mode = "pulse",
+  level = "circuit",
+  practice = false,
+) {
   if (!Object.hasOwn(SPEEDS, mode)) throw new Error("Unknown mode");
+  getLevel(level);
+  if (typeof practice !== "boolean") throw new Error("Invalid practice mode");
   return {
     mode,
+    level,
+    practice,
+    checkpoint: 0,
     status: "ready",
     distance: 0,
     y: 0,
@@ -47,6 +119,36 @@ export function createState(mode = "pulse") {
     accumulator: 0,
     jumpBuffer: 0,
   };
+}
+const checkpointCache = new Map();
+export function checkpointDistances(level = "circuit") {
+  if (!checkpointCache.has(level)) {
+    const obstacles = createLevel(level),
+      candidates = [];
+    for (let index = 0; index < obstacles.length - 1; index++) {
+      const end = obstacles[index].x + obstacles[index].width;
+      if (obstacles[index + 1].x - end >= 300) candidates.push(end + 35);
+    }
+    const points = [0.25, 0.5, 0.75].map(
+      (fraction) =>
+        candidates
+          .filter((point) => point <= getLevel(level).finish * fraction)
+          .at(-1) || 0,
+    );
+    checkpointCache.set(
+      level,
+      [...new Set(points)].filter((point) => point > 0),
+    );
+  }
+  return [...checkpointCache.get(level)];
+}
+export function restartState(previous, fromBeginning = false) {
+  const next = createState(previous.mode, previous.level, previous.practice);
+  if (previous.practice && !fromBeginning && previous.status !== "won") {
+    next.checkpoint = previous.checkpoint;
+    next.distance = next.checkpoint;
+  }
+  return next;
 }
 export function requestJump(state) {
   if (state.status === "running") state.jumpBuffer = 0.09;
@@ -96,7 +198,7 @@ export function collides(state, obstacle) {
         ];
   return overlapPolygons(player, shape);
 }
-export function update(state, elapsed, obstacles = createLevel()) {
+export function update(state, elapsed, obstacles = createLevel(state.level)) {
   if (state.status !== "running") return state;
   // Long frame gaps never fast-forward the player through an entire level.
   state.accumulator += Math.min(0.1, Math.max(0, elapsed));
@@ -122,8 +224,13 @@ export function update(state, elapsed, obstacles = createLevel()) {
       state.status = "dead";
       break;
     }
-    if (state.distance >= FINISH) {
-      state.distance = FINISH;
+    if (state.practice && state.y === 0) {
+      for (const point of checkpointDistances(state.level))
+        if (state.distance >= point)
+          state.checkpoint = Math.max(state.checkpoint, point);
+    }
+    if (state.distance >= getLevel(state.level).finish) {
+      state.distance = getLevel(state.level).finish;
       state.status = "won";
     }
   }
