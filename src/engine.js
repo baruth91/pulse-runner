@@ -4,6 +4,10 @@ export const JUMP = 650;
 export const SPEEDS = { chill: 235, pulse: 285, rush: 335 };
 export const FINISH = 7800;
 export const FIXED_STEP = 1 / 240;
+// Flight uses a fixed logical arena, independent of responsive canvas height.
+export const FLIGHT_HEIGHT = 300;
+export const FLIGHT_GRAVITY = 800;
+export const FLIGHT_IMPULSE = 250;
 export const LEVELS = [
   {
     id: "circuit",
@@ -26,15 +30,72 @@ export const LEVELS = [
     finish: 8000,
     description: "Mais obstáculos. Mais precisão.",
   },
+  {
+    id: "first-flight",
+    name: "Primeiro voo",
+    number: "04",
+    kind: "flight",
+    finish: 5400,
+    description: "Passagens amplas para aprender a controlar a altura.",
+  },
+  {
+    id: "skyline",
+    name: "Ondas no céu",
+    number: "05",
+    kind: "flight",
+    finish: 5700,
+    description: "Suba e desça entre portais em alturas alternadas.",
+  },
+  {
+    id: "airflow",
+    name: "Voo de precisão",
+    number: "06",
+    kind: "flight",
+    finish: 6000,
+    description: "Passagens menores. Encontre a cadência dos impulsos.",
+  },
 ];
 export function getLevel(id = "circuit") {
   const level = LEVELS.find((item) => item.id === id);
   if (!level) throw new Error("Unknown level");
   return level;
 }
+export function isFlight(level) {
+  return getLevel(level).kind === "flight";
+}
 
 export function createLevel(id = "circuit") {
   getLevel(id);
+  if (isFlight(id)) {
+    const config =
+      id === "first-flight"
+        ? {
+            gap: 154,
+            spacing: 430,
+            centers: [150, 150, 175, 150, 125, 150, 175, 150, 125, 150],
+          }
+        : id === "skyline"
+          ? {
+              gap: 132,
+              spacing: 420,
+              centers: [150, 185, 150, 115, 150, 185, 150, 115, 150, 180, 150],
+            }
+          : {
+              gap: 114,
+              spacing: 400,
+              centers: [
+                150, 180, 125, 175, 120, 170, 130, 180, 125, 170, 140, 150,
+              ],
+            };
+    return config.centers.map((center, index) => ({
+      type: "gate",
+      x: 650 + index * config.spacing,
+      width: 64,
+      height: FLIGHT_HEIGHT,
+      bottom: center - config.gap / 2,
+      top: center + config.gap / 2,
+    }));
+  }
   const obstacles = [];
   const pattern = [
     "spike",
@@ -112,12 +173,13 @@ export function createState(
     checkpoint: 0,
     status: "ready",
     distance: 0,
-    y: 0,
+    y: isFlight(level) ? (FLIGHT_HEIGHT - SIZE) / 2 : 0,
     velocity: 0,
     jumps: 0,
     rotation: 0,
     accumulator: 0,
     jumpBuffer: 0,
+    checkpointY: isFlight(level) ? (FLIGHT_HEIGHT - SIZE) / 2 : 0,
   };
 }
 const checkpointCache = new Map();
@@ -147,6 +209,8 @@ export function restartState(previous, fromBeginning = false) {
   if (previous.practice && !fromBeginning && previous.status !== "won") {
     next.checkpoint = previous.checkpoint;
     next.distance = next.checkpoint;
+    if (isFlight(previous.level) && next.checkpoint > 0)
+      next.y = next.checkpointY = previous.checkpointY;
   }
   return next;
 }
@@ -171,6 +235,11 @@ export function overlapPolygons(first, second) {
 export function collides(state, obstacle) {
   const left = state.distance + 3,
     right = state.distance + SIZE - 3;
+  if (obstacle.type === "gate") {
+    if (right <= obstacle.x || left >= obstacle.x + obstacle.width)
+      return false;
+    return state.y + 2 < obstacle.bottom || state.y + SIZE - 2 > obstacle.top;
+  }
   if (
     right <= obstacle.x ||
     left >= obstacle.x + obstacle.width ||
@@ -200,21 +269,30 @@ export function collides(state, obstacle) {
 }
 export function update(state, elapsed, obstacles = createLevel(state.level)) {
   if (state.status !== "running") return state;
+  const flight = isFlight(state.level);
+  const gravity = flight ? FLIGHT_GRAVITY : GRAVITY;
   // Long frame gaps never fast-forward the player through an entire level.
   state.accumulator += Math.min(0.1, Math.max(0, elapsed));
   while (state.accumulator >= FIXED_STEP && state.status === "running") {
     state.accumulator -= FIXED_STEP;
-    if (state.jumpBuffer > 0 && state.y === 0) {
-      state.velocity = JUMP;
+    if (state.jumpBuffer > 0 && (flight || state.y === 0)) {
+      state.velocity = flight ? FLIGHT_IMPULSE : JUMP;
       state.jumps++;
       state.jumpBuffer = 0;
     }
     state.jumpBuffer = Math.max(0, state.jumpBuffer - FIXED_STEP);
     state.distance += SPEEDS[state.mode] * FIXED_STEP;
     state.y +=
-      state.velocity * FIXED_STEP - (GRAVITY * FIXED_STEP * FIXED_STEP) / 2;
-    state.velocity -= GRAVITY * FIXED_STEP;
-    if (state.y <= 0) {
+      state.velocity * FIXED_STEP - (gravity * FIXED_STEP * FIXED_STEP) / 2;
+    state.velocity -= gravity * FIXED_STEP;
+    if (flight) {
+      state.rotation = Math.max(-0.5, Math.min(0.8, -state.velocity / 400));
+      if (state.y <= 0 || state.y + SIZE >= FLIGHT_HEIGHT) {
+        state.y = Math.max(0, Math.min(FLIGHT_HEIGHT - SIZE, state.y));
+        state.status = "dead";
+        break;
+      }
+    } else if (state.y <= 0) {
       state.y = 0;
       state.velocity = 0;
       state.rotation =
@@ -224,10 +302,16 @@ export function update(state, elapsed, obstacles = createLevel(state.level)) {
       state.status = "dead";
       break;
     }
-    if (state.practice && state.y === 0) {
+    if (state.practice && (flight || state.y === 0)) {
       for (const point of checkpointDistances(state.level))
-        if (state.distance >= point)
-          state.checkpoint = Math.max(state.checkpoint, point);
+        if (state.distance >= point && state.checkpoint < point) {
+          state.checkpoint = point;
+          // Restart in a safe gap with zero vertical speed, away from both limits.
+          state.checkpointY = Math.max(
+            75,
+            Math.min(FLIGHT_HEIGHT - SIZE - 75, state.y),
+          );
+        }
     }
     if (state.distance >= getLevel(state.level).finish) {
       state.distance = getLevel(state.level).finish;

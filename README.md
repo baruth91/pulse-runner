@@ -1,17 +1,26 @@
 # Pulse runner
 
 An original one-button geometric arcade game for modern browsers. Jump over a
-fixed sequence of spikes and blocks, learn the timing, and reach the finish line.
+fixed sequence of spikes and blocks, or fly between gates with timed impulses.
+Learn the timing and reach the finish line.
 Canvas 2D art, physics and interface are implemented without runtime dependencies.
 
 ## Play
 
 - Space, Up arrow, left click or touch on the game canvas: jump.
 - P: pause/resume. R: restart (from the checkpoint when practicing).
-- Choose one of three authored circuits, then Tranquilo, Pulsante or Intenso.
+- Choose one of six authored circuits, then Tranquilo, Pulsante or Intenso.
+- Circuits 01–03 use grounded jumps. Circuits 04–06 use flight: each press/click/
+  touch gives an upward impulse, including in midair; gravity brings you down.
+  Repeated discrete inputs are required. Holding a key does not repeat impulses.
+  Avoid both pillars of each gate, the floor and ceiling.
+- Flight courses progress from wide openings (Primeiro voo), through alternating
+  heights (Ondas no céu), to narrower openings (Voo de precisão).
 - Enable practice to unlock safe checkpoints as you advance on the ground.
   Retry from the last checkpoint, or choose Do início to reset the whole run.
   Checkpoints last only for the current session and reset when changing options.
+  In flight, checkpoints are acquired between gates while airborne. Retry restores
+  a safe height with zero vertical speed; continue tapping to maintain flight.
 - The game pauses when the page is hidden. Start again with Continue.
 - Choose Pulse, Glacial, Nova or Brasa in the skin selector. Each has an original
   color and pattern; all share the same collision box and jump physics. Selecting
@@ -25,7 +34,7 @@ Canvas 2D art, physics and interface are implemented without runtime dependencie
 - Best percentage is stored locally per circuit and difficulty, when storage is available.
   Practice never updates ranked bests. Original-circuit bests migrate from v0.1.
 
-There are three circuits with different obstacle sequences and three speeds each.
+There are six circuits with different obstacle sequences and three speeds each.
 The result screen shows progress and jumps for the attempt; finishing offers the
 next circuit. There is no audio/music synchronization, login, network leaderboard or
 in-app purchase. Progress is an informal local best, not a trusted online score.
@@ -58,6 +67,8 @@ does not automatically make that hosted preview public.
 - tests/engine.test.mjs: 15 tests, including all circuits at every speed and checkpoint recovery.
 - tests/audio.test.mjs: 3 lifecycle tests for opt-in, pause cleanup, mute, effects
   independence and late activation. These use an audio-context double, not speakers.
+- tests/flight.test.mjs: 6 tests covering midair impulses, floor/ceiling and gate
+  collision, completion at each speed, practice recovery and record separation.
 
 The soundtrack combines synthesized kick, snare, hats, bass and a melodic minor
 progression. No recordings or external music services are used. A short look-ahead
@@ -70,6 +81,11 @@ visually rotates. This is a forgiving gameplay choice. Fixed small simulation
 steps prevent narrow obstacles being skipped at higher speed. Long frame gaps are
 capped, rather than fast-forwarded; very slow devices may slow gameplay. Frame
 visibility pause prevents a hidden page silently advancing.
+
+Flight has its own gravity and impulse strength. Its arena is 300 logical units
+high, scaled vertically to the canvas so a smaller screen never changes collision
+geometry or available flight space. Gate openings and difficulty are authored,
+not random. Simulated completion demonstrates feasibility, not human balancing.
 
 ## Next possible increments
 

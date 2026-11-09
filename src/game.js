@@ -8,6 +8,8 @@ import {
   checkpointDistances,
   restartState,
   SIZE,
+  FLIGHT_HEIGHT,
+  isFlight,
 } from "./engine.js";
 import { readRecords, recordAttempt, recordKey } from "./records.js";
 import { SKINS, getSkin, drawSkin, createFragments } from "./cosmetics.js";
@@ -213,7 +215,9 @@ function start() {
   pauseButton.setAttribute("aria-label", "Pausar jogo");
   status.textContent = practice
     ? "Treino ativo · checkpoints não contam para recordes"
-    : "No circuito · espaço / clique / toque para saltar";
+    : isFlight(levelId)
+      ? "Em voo · toque para subir · sem tocar, você cai"
+      : "No circuito · espaço / clique / toque para saltar";
   updateRecords();
   lastTime = performance.now();
   canvas.focus({ preventScroll: true });
@@ -249,7 +253,10 @@ function reset(fromBeginning = false) {
 function jump() {
   if (help.open) return;
   if (state.status === "running") requestJump(state);
-  else start();
+  else {
+    start();
+    if (isFlight(levelId)) requestJump(state);
+  }
 }
 function selectRun() {
   audio.silence();
@@ -260,6 +267,16 @@ function selectRun() {
   lastCheckpoint = 0;
   document.getElementById("attempts").textContent = "00";
   const level = getLevel(levelId);
+  const flight = isFlight(levelId);
+  document.getElementById("control-note").textContent = flight
+    ? "MODO VOO · Cada toque dá um impulso para cima. Soltou? Você cai. Evite o chão, o teto e os portais."
+    : "MODO SALTO · Espaço, ↑, clique ou toque para saltar do chão.";
+  canvas.setAttribute(
+    "aria-label",
+    flight
+      ? "Jogo de voo. Use espaço, seta para cima, clique ou toque para impulsionar. Sem impulso, você cai. P pausa e R reinicia."
+      : "Jogo de saltos. Use espaço ou seta para cima para saltar, P para pausar e R para reiniciar.",
+  );
   document.getElementById("level-number").textContent =
     `FASE ${level.number}${practice ? " · TREINO" : ""}`;
   document.getElementById("level-name").textContent = level.name;
@@ -285,8 +302,10 @@ function selectRun() {
     practice ? "APRENDA UM TRECHO DE CADA VEZ" : `CIRCUITO ${level.number}`,
     level.name,
     practice
-      ? "Checkpoints guardam seu avanço nesta sessão. Após errar, continue do último trecho salvo."
-      : level.description,
+      ? `Checkpoints guardam seu avanço nesta sessão. ${flight ? "Cada toque impulsiona para cima. Sem tocar, você cai." : "Após errar, continue do último trecho salvo."}`
+      : flight
+        ? `${level.description} Cada toque impulsiona para cima; sem tocar, você cai. Evite também o chão e o teto.`
+        : level.description,
     "Começar a jogar →",
   );
   updateRecords();
@@ -384,22 +403,24 @@ function line(x1, y1, x2, y2, color, lineWidth = 1) {
   ctx.stroke();
 }
 function draw() {
+  const flight = isFlight(levelId);
+  const sceneHeight = flight ? FLIGHT_HEIGHT + 60 : height;
   const scaleX = canvas.width / width,
-    scaleY = canvas.height / height;
+    scaleY = canvas.height / sceneHeight;
   ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
-  ctx.clearRect(0, 0, width, height);
-  const floor = height - 60,
+  ctx.clearRect(0, 0, width, sceneHeight);
+  const floor = sceneHeight - 60,
     playerX = Math.min(110, width * 0.18),
     shift = state.distance;
-  const gradient = ctx.createLinearGradient(0, 0, 0, height);
-  gradient.addColorStop(0, "#15221c");
+  const gradient = ctx.createLinearGradient(0, 0, 0, sceneHeight);
+  gradient.addColorStop(0, flight ? "#142530" : "#15221c");
   gradient.addColorStop(1, "#1b2b21");
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, width, sceneHeight);
   const drift = reduced ? 0 : shift * 0.16;
   for (let x = -80 - (drift % 90); x < width; x += 90)
-    line(x, 0, x, height, "#b9f27807");
-  for (let y = 30; y < height; y += 60) line(0, y, width, y, "#b9f27806");
+    line(x, 0, x, sceneHeight, "#b9f27807");
+  for (let y = 30; y < sceneHeight; y += 60) line(0, y, width, y, "#b9f27806");
   // Original geometric scenery, drawn entirely in code.
   for (let index = 0; index < 7; index++) {
     const x = (index * 240 - drift * 0.6) % (width + 300);
@@ -414,8 +435,9 @@ function draw() {
     ctx.stroke();
   }
   ctx.fillStyle = "#101b15";
-  ctx.fillRect(0, floor, width, height - floor);
+  ctx.fillRect(0, floor, width, sceneHeight - floor);
   line(0, floor, width, floor, "#b9f27888", 1);
+  if (flight) line(0, 1, width, 1, "#ff9b80", 2);
   for (let x = -((shift * 0.6) % 40); x < width; x += 40)
     line(x, floor + 20, x + 12, floor + 20, "#66835630");
   for (const obstacle of obstacles) {
@@ -425,7 +447,10 @@ function draw() {
     ctx.strokeStyle = "#ff9b80";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    if (obstacle.type === "spike") {
+    if (obstacle.type === "gate") {
+      ctx.rect(x, floor - obstacle.bottom, obstacle.width, obstacle.bottom);
+      ctx.rect(x, 0, obstacle.width, FLIGHT_HEIGHT - obstacle.top);
+    } else if (obstacle.type === "spike") {
       ctx.moveTo(x, floor);
       ctx.lineTo(x + obstacle.width / 2, floor - obstacle.height);
       ctx.lineTo(x + obstacle.width, floor);
@@ -434,6 +459,24 @@ function draw() {
       ctx.rect(x, floor - obstacle.height, obstacle.width, obstacle.height);
     ctx.fill();
     ctx.stroke();
+    if (obstacle.type === "gate") {
+      line(
+        x - 3,
+        floor - obstacle.bottom,
+        x + obstacle.width + 3,
+        floor - obstacle.bottom,
+        "#ff9b80",
+        3,
+      );
+      line(
+        x - 3,
+        floor - obstacle.top,
+        x + obstacle.width + 3,
+        floor - obstacle.top,
+        "#ff9b80",
+        3,
+      );
+    }
     if (obstacle.type === "block")
       line(
         x + 7,
@@ -512,7 +555,7 @@ function draw() {
   if (state.status === "ready") {
     ctx.fillStyle = "#a8bd9c";
     ctx.font = "9px system-ui";
-    ctx.fillText("VOCÊ", playerX + 4, floor - 48);
+    ctx.fillText("VOCÊ", playerX + 4, floor - state.y - 48);
   }
 }
 function frame(timestamp) {
@@ -573,7 +616,7 @@ function frame(timestamp) {
       document.getElementById("next-level").hidden = false;
     }
     const summary = document.getElementById("result-summary");
-    summary.textContent = `${progress()}% · ${state.jumps} saltos nesta tentativa · ${practice ? "treino" : "sem assistência"}`;
+    summary.textContent = `${progress()}% · ${state.jumps} ${isFlight(levelId) ? "impulsos" : "saltos"} nesta tentativa · ${practice ? "treino" : "sem assistência"}`;
     summary.hidden = false;
     if (state.status === "dead" && !reduced) overlay.hidden = true;
     else if (document.activeElement === canvas)

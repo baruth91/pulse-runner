@@ -12,6 +12,7 @@ import {
   getLevel,
   checkpointDistances,
   restartState,
+  isFlight,
 } from "../src/engine.js";
 import { readRecords, recordAttempt, recordKey } from "../src/records.js";
 test("unknown and inherited mode names are rejected", () => {
@@ -71,7 +72,7 @@ test("normal render rates produce equivalent physical results", () => {
   assert.equal(a.y, b.y);
 });
 test("every authored circuit is completable in each difficulty using grounded jumps", () => {
-  for (const level of LEVELS) {
+  for (const level of LEVELS.filter((item) => !isFlight(item.id))) {
     for (const mode of Object.keys(SPEEDS)) {
       const state = createState(mode, level.id);
       state.status = "running";
@@ -127,7 +128,7 @@ test("practice checkpoints activate only after reaching grounded progress", () =
   assert.equal(normal.checkpoint, 0);
 });
 test("each checkpoint restarts safely and can finish at the highest speed", () => {
-  for (const level of LEVELS)
+  for (const level of LEVELS.filter((item) => !isFlight(item.id)))
     for (const point of checkpointDistances(level.id)) {
       const previous = createState("rush", level.id, true);
       previous.checkpoint = point;

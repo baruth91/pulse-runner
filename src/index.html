@@ -37,7 +37,7 @@
       </section>
       <section class="circuit-picker" aria-label="Escolher circuito">
         <div class="picker-header">
-          <p class="eyebrow">TRÊS CAMINHOS. SEU PRÓPRIO RITMO.</p>
+          <p class="eyebrow">SEIS CIRCUITOS. SALTE OU VOE.</p>
           <label class="practice-switch"
             ><input
               id="practice"
@@ -67,6 +67,21 @@
             <span>03</span><strong>Impulso final</strong
             ><small>Mais obstáculos. Mais precisão.</small
             ><span class="level-best" id="best-momentum">Melhor: 0%</span>
+          </button>
+          <button data-level="first-flight" aria-pressed="false">
+            <span>04 · VOO</span><strong>Primeiro voo</strong>
+            <small>Passagens amplas. Aprenda a controlar a altura.</small>
+            <span class="level-best" id="best-first-flight">Melhor: 0%</span>
+          </button>
+          <button data-level="skyline" aria-pressed="false">
+            <span>05 · VOO</span><strong>Ondas no céu</strong>
+            <small>Suba e desça entre portais em alturas alternadas.</small>
+            <span class="level-best" id="best-skyline">Melhor: 0%</span>
+          </button>
+          <button data-level="airflow" aria-pressed="false">
+            <span>06 · VOO</span><strong>Voo de precisão</strong>
+            <small>Passagens menores. Encontre a cadência dos impulsos.</small>
+            <span class="level-best" id="best-airflow">Melhor: 0%</span>
           </button>
         </div>
         <p id="practice-note" class="mode-note">
@@ -114,6 +129,9 @@
           >Trilha original · 128 BPM · ative o som para ouvir</span
         >
       </section>
+      <p id="control-note" class="control-note">
+        MODO SALTO · Espaço, ↑, clique ou toque para saltar do chão.
+      </p>
       <section class="arena" aria-label="Jogo Pulse runner">
         <div class="hud">
           <div>
@@ -229,12 +247,20 @@
           saltar.
         </li>
         <li><kbd>P</kbd>: pausar ou continuar. <kbd>R</kbd>: recomeçar.</li>
-        <li>O quadrado avança sozinho. Você só precisa acertar o salto.</li>
-        <li>Evite pontas e blocos. Chegue a 100% para completar o circuito.</li>
+        <li>Nas fases 01–03, salte do chão para evitar pontas e blocos.</li>
+        <li>
+          Nas fases 04–06, cada toque dá um impulso para cima, mesmo no ar. Sem
+          tocar, você cai. Segurar a tecla não repete impulsos.
+        </li>
+        <li>
+          No voo, atravesse a abertura dos portais. Tocar o chão ou o teto
+          encerra a tentativa. Chegue a 100% para completar.
+        </li>
         <li>Ao trocar de aba, a partida pausa automaticamente.</li>
         <li>
           No treino, retome do último checkpoint. Use “Do início” para recomeçar
-          do zero. Treino não altera recordes.
+          do zero. Treino não altera recordes. No voo, o checkpoint retoma a uma
+          altura segura, com velocidade vertical zerada.
         </li>
         <li>
           Ative o som para ouvir a trilha eletrônica e a colisão. Música e

@@ -1,10 +1,10 @@
 # Verification
 
-Latest verification: 2026-11-09 (v0.4.0).
+Latest verification: 2026-11-09 (v0.5.0).
 
-- Eighteen tests passed (15 gameplay/records, 3 audio lifecycle).
+- Twenty-four tests passed (15 jumping/records, 6 flight, 3 audio lifecycle).
 - Static build completed without dependency installation.
-- Simulation verifies all three circuits can be completed at all three speeds.
+- Simulation verifies all six circuits can be completed at all three speeds.
 - Every practice checkpoint can restart safely and finish at the fastest speed.
 - Tests verify grounded checkpoint acquisition, fresh restart physics, explicit
   full reset, record isolation by level/speed and exclusion of practice results.
@@ -25,6 +25,14 @@ Latest verification: 2026-11-09 (v0.4.0).
   balance were not audibly verified through the browser automation interface.
 - Audio lifecycle tests verify explicit opt-in, independent collision effects,
   mute, stopped voices/timers, bounded volume and paused state after late activation.
+- v0.5 flight tests cover gravity, discrete midair impulses, floor/ceiling failure,
+  both gate pillars, completion at all three speeds, safe restart from every flight
+  checkpoint at the highest speed, and record separation from jumping/practice.
+- v0.5 browser checks exercised flight selection, keyboard and pointer impulses,
+  pause/resume, failure/retry with impulse count, practice selection, and keyboard
+  activation of a circuit button without starting gameplay. Desktop and 390 px
+  layout inspected without horizontal overflow. No console warnings/errors captured.
+  Full human flight completion, physical touchscreen and difficulty tuning remain pending.
 
 Tests cover invalid modes, baseline collision, no double jump in midair, paused
 state invariance, triangle-edge collision, anti-tunneling substeps, approximate

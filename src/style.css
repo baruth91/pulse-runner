@@ -713,3 +713,17 @@ dialog li {
   border-color: var(--mint);
   color: var(--mint);
 }
+.control-note {
+  color: var(--mint);
+  font-size: 11px;
+  line-height: 1.7;
+  padding: 10px 14px;
+  border-left: 2px solid var(--mint);
+  background: #b9f27808;
+  margin: 0 0 14px;
+}
+.level-buttons button[data-level="first-flight"] > span:first-child,
+.level-buttons button[data-level="skyline"] > span:first-child,
+.level-buttons button[data-level="airflow"] > span:first-child {
+  color: #79dfff;
+}
