@@ -8,6 +8,7 @@ export const FIXED_STEP = 1 / 240;
 export const FLIGHT_HEIGHT = 300;
 export const FLIGHT_GRAVITY = 800;
 export const FLIGHT_IMPULSE = 250;
+export const WAVE_SLOPE = 0.75;
 export const LEVELS = [
   {
     id: "circuit",
@@ -54,6 +55,30 @@ export const LEVELS = [
     finish: 6000,
     description: "Passagens menores. Encontre a cadência dos impulsos.",
   },
+  {
+    id: "wave-start",
+    name: "Primeira onda",
+    number: "07",
+    kind: "wave",
+    finish: 5300,
+    description: "Alterne a direção e desenhe seu primeiro zigue-zague.",
+  },
+  {
+    id: "wave-neon",
+    name: "Serpente neon",
+    number: "08",
+    kind: "wave",
+    finish: 5700,
+    description: "Siga as curvas de um túnel em diagonal.",
+  },
+  {
+    id: "wave-storm",
+    name: "Onda de precisão",
+    number: "09",
+    kind: "wave",
+    finish: 6100,
+    description: "Um corredor mais estreito para dominar as trocas.",
+  },
 ];
 export function getLevel(id = "circuit") {
   const level = LEVELS.find((item) => item.id === id);
@@ -63,9 +88,70 @@ export function getLevel(id = "circuit") {
 export function isFlight(level) {
   return getLevel(level).kind === "flight";
 }
+export function isWave(level) {
+  return getLevel(level).kind === "wave";
+}
+export function isAirborne(level) {
+  return isFlight(level) || isWave(level);
+}
 
 export function createLevel(id = "circuit") {
   getLevel(id);
+  if (isWave(id)) {
+    const config =
+      id === "wave-start"
+        ? {
+            gap: 164,
+            centers: [
+              150, 150, 190, 110, 190, 110, 190, 110, 150, 150, 150, 150, 150,
+            ],
+          }
+        : id === "wave-neon"
+          ? {
+              gap: 140,
+              centers: [
+                150, 150, 205, 95, 205, 95, 205, 95, 205, 95, 150, 150, 150,
+                150,
+              ],
+            }
+          : {
+              gap: 118,
+              centers: [
+                150, 150, 210, 90, 210, 90, 210, 90, 210, 90, 210, 90, 150, 150,
+                150,
+              ],
+            };
+    const walls = config.centers.slice(0, -1).map((center, index) => ({
+      type: "corridor",
+      x: index * 400,
+      width: index === config.centers.length - 2 ? 900 : 400,
+      height: FLIGHT_HEIGHT,
+      bottom: center - config.gap / 2,
+      top: center + config.gap / 2,
+      bottomEnd: config.centers[index + 1] - config.gap / 2,
+      topEnd: config.centers[index + 1] + config.gap / 2,
+    }));
+    const hazards = [];
+    for (
+      let x = 650, index = 0;
+      x < getLevel(id).finish - 350;
+      x += 550, index++
+    ) {
+      const wall = walls.find((wall) => x < wall.x + wall.width);
+      const ratio = (x + 17 - wall.x) / wall.width;
+      const offset = (wall.bottomEnd - wall.bottom) * ratio;
+      const side = index % 2 === 0 ? "ceiling" : "floor";
+      hazards.push({
+        type: "wave-hazard",
+        x,
+        width: 34,
+        height: 44,
+        side,
+        y: side === "floor" ? wall.bottom + offset - 2 : wall.top + offset - 42,
+      });
+    }
+    return [...walls, ...hazards];
+  }
   if (isFlight(id)) {
     const config =
       id === "first-flight"
@@ -173,17 +259,23 @@ export function createState(
     checkpoint: 0,
     status: "ready",
     distance: 0,
-    y: isFlight(level) ? (FLIGHT_HEIGHT - SIZE) / 2 : 0,
+    y: isAirborne(level) ? (FLIGHT_HEIGHT - SIZE) / 2 : 0,
     velocity: 0,
     jumps: 0,
     rotation: 0,
     accumulator: 0,
     jumpBuffer: 0,
-    checkpointY: isFlight(level) ? (FLIGHT_HEIGHT - SIZE) / 2 : 0,
+    checkpointY: isAirborne(level) ? (FLIGHT_HEIGHT - SIZE) / 2 : 0,
+    direction: 1,
+    attached: null,
   };
 }
 const checkpointCache = new Map();
 export function checkpointDistances(level = "circuit") {
+  if (isWave(level))
+    return [0.25, 0.5, 0.75].map(
+      (fraction) => getLevel(level).finish * fraction,
+    );
   if (!checkpointCache.has(level)) {
     const obstacles = createLevel(level),
       candidates = [];
@@ -211,11 +303,58 @@ export function restartState(previous, fromBeginning = false) {
     next.distance = next.checkpoint;
     if (isFlight(previous.level) && next.checkpoint > 0)
       next.y = next.checkpointY = previous.checkpointY;
+    if (isWave(previous.level) && next.checkpoint > 0) {
+      const path = wavePath(previous.level, next.distance + SIZE / 2);
+      next.y = next.checkpointY = path.center - SIZE / 2;
+      next.direction = path.slope < 0 ? -1 : 1;
+    }
   }
   return next;
 }
 export function requestJump(state) {
-  if (state.status === "running") state.jumpBuffer = 0.09;
+  if (state.status !== "running") return;
+  if (isWave(state.level)) {
+    // Toggle immediately: two real taps before a frame must still count twice.
+    state.direction *= -1;
+    state.jumps++;
+  } else state.jumpBuffer = 0.09;
+}
+export function wavePath(level, x) {
+  if (!isWave(level)) throw new Error("Not a Wave level");
+  const segments = createLevel(level).filter(
+    (item) => item.type === "corridor",
+  );
+  const segment =
+    segments.find((item) => x < item.x + item.width) || segments.at(-1);
+  const ratio = Math.max(0, Math.min(1, (x - segment.x) / segment.width));
+  return {
+    center:
+      (segment.bottom + segment.top) / 2 +
+      (segment.bottomEnd - segment.bottom) * ratio,
+    slope: (segment.bottomEnd - segment.bottom) / segment.width,
+  };
+}
+export function waveBounds(distance, obstacles) {
+  let bottom = 0,
+    top = FLIGHT_HEIGHT - SIZE;
+  for (const wall of obstacles) {
+    if (
+      wall.type !== "corridor" ||
+      distance + SIZE <= wall.x ||
+      distance >= wall.x + wall.width
+    )
+      continue;
+    for (const x of [
+      Math.max(wall.x, distance),
+      Math.min(wall.x + wall.width, distance + SIZE),
+    ]) {
+      const offset =
+        ((wall.bottomEnd - wall.bottom) * (x - wall.x)) / wall.width;
+      bottom = Math.max(bottom, wall.bottom + offset);
+      top = Math.min(top, wall.top + offset - SIZE);
+    }
+  }
+  return { bottom, top };
 }
 export function overlapPolygons(first, second) {
   for (const polygon of [first, second])
@@ -235,6 +374,26 @@ export function overlapPolygons(first, second) {
 export function collides(state, obstacle) {
   const left = state.distance + 3,
     right = state.distance + SIZE - 3;
+  if (obstacle.type === "corridor") return false; // Rideable surfaces, never hazards.
+  if (obstacle.type === "wave-hazard") {
+    if (right <= obstacle.x || left >= obstacle.x + obstacle.width)
+      return false;
+    const player = [
+      { x: left, y: state.y + 2 },
+      { x: right, y: state.y + 2 },
+      { x: right, y: state.y + SIZE - 2 },
+      { x: left, y: state.y + SIZE - 2 },
+    ];
+    const base =
+      obstacle.side === "floor" ? obstacle.y : obstacle.y + obstacle.height;
+    const tip =
+      obstacle.side === "floor" ? obstacle.y + obstacle.height : obstacle.y;
+    return overlapPolygons(player, [
+      { x: obstacle.x, y: base },
+      { x: obstacle.x + obstacle.width, y: base },
+      { x: obstacle.x + obstacle.width / 2, y: tip },
+    ]);
+  }
   if (obstacle.type === "gate") {
     if (right <= obstacle.x || left >= obstacle.x + obstacle.width)
       return false;
@@ -270,21 +429,40 @@ export function collides(state, obstacle) {
 export function update(state, elapsed, obstacles = createLevel(state.level)) {
   if (state.status !== "running") return state;
   const flight = isFlight(state.level);
+  const wave = isWave(state.level);
   const gravity = flight ? FLIGHT_GRAVITY : GRAVITY;
   // Long frame gaps never fast-forward the player through an entire level.
   state.accumulator += Math.min(0.1, Math.max(0, elapsed));
   while (state.accumulator >= FIXED_STEP && state.status === "running") {
     state.accumulator -= FIXED_STEP;
-    if (state.jumpBuffer > 0 && (flight || state.y === 0)) {
+    if (!wave && state.jumpBuffer > 0 && (flight || state.y === 0)) {
       state.velocity = flight ? FLIGHT_IMPULSE : JUMP;
       state.jumps++;
       state.jumpBuffer = 0;
     }
     state.jumpBuffer = Math.max(0, state.jumpBuffer - FIXED_STEP);
     state.distance += SPEEDS[state.mode] * FIXED_STEP;
-    state.y +=
-      state.velocity * FIXED_STEP - (gravity * FIXED_STEP * FIXED_STEP) / 2;
-    state.velocity -= gravity * FIXED_STEP;
+    if (wave) {
+      state.velocity = state.direction * SPEEDS[state.mode] * WAVE_SLOPE;
+      const bounds = waveBounds(state.distance, obstacles);
+      state.y = Math.max(
+        bounds.bottom,
+        Math.min(bounds.top, state.y + state.velocity * FIXED_STEP),
+      );
+      state.attached =
+        state.y === bounds.bottom
+          ? "floor"
+          : state.y === bounds.top
+            ? "ceiling"
+            : null;
+      state.rotation = state.attached
+        ? 0
+        : -state.direction * Math.atan(WAVE_SLOPE);
+    } else {
+      state.y +=
+        state.velocity * FIXED_STEP - (gravity * FIXED_STEP * FIXED_STEP) / 2;
+      state.velocity -= gravity * FIXED_STEP;
+    }
     if (flight) {
       state.rotation = Math.max(-0.5, Math.min(0.8, -state.velocity / 400));
       if (state.y <= 0 || state.y + SIZE >= FLIGHT_HEIGHT) {
@@ -292,17 +470,17 @@ export function update(state, elapsed, obstacles = createLevel(state.level)) {
         state.status = "dead";
         break;
       }
-    } else if (state.y <= 0) {
+    } else if (!wave && state.y <= 0) {
       state.y = 0;
       state.velocity = 0;
       state.rotation =
         Math.round(state.rotation / (Math.PI / 2)) * (Math.PI / 2);
-    } else state.rotation += FIXED_STEP * 7;
+    } else if (!wave) state.rotation += FIXED_STEP * 7;
     if (obstacles.some((obstacle) => collides(state, obstacle))) {
       state.status = "dead";
       break;
     }
-    if (state.practice && (flight || state.y === 0)) {
+    if (state.practice && (wave || flight || state.y === 0)) {
       for (const point of checkpointDistances(state.level))
         if (state.distance >= point && state.checkpoint < point) {
           state.checkpoint = point;

@@ -1,10 +1,10 @@
 # Verification
 
-Latest verification: 2026-11-09 (v0.5.0).
+Latest verification: 2026-11-09 (v0.6.0).
 
-- Twenty-four tests passed (15 jumping/records, 6 flight, 3 audio lifecycle).
+- Thirty-two tests passed (15 jumping/records, 6 flight, 8 Wave, 3 audio lifecycle).
 - Static build completed without dependency installation.
-- Simulation verifies all six circuits can be completed at all three speeds.
+- Simulation verifies all nine circuits can be completed at all three speeds.
 - Every practice checkpoint can restart safely and finish at the fastest speed.
 - Tests verify grounded checkpoint acquisition, fresh restart physics, explicit
   full reset, record isolation by level/speed and exclusion of practice results.
@@ -33,6 +33,17 @@ Latest verification: 2026-11-09 (v0.5.0).
   activation of a circuit button without starting gameplay. Desktop and 390 px
   layout inspected without horizontal overflow. No console warnings/errors captured.
   Full human flight completion, physical touchscreen and difficulty tuning remain pending.
+- v0.6 tests verify click-toggle Wave with adhesion: floor/ceiling surfaces are
+  safe, the character stays attached to sloping surfaces until another tap, and
+  only separate hazards are lethal. All Wave circuits finish at all speeds, and
+  all checkpoints restart safely and finish at the fastest speed.
+- Browser checks confirmed ceiling adhesion, pointer-triggered transition to
+  floor adhesion, pause/resume and trail rendering. Background rain/neon and a
+  lightning bolt were visually observed. Disabling the background survived reload.
+  No console errors/warnings were captured in the final check. Reduced-motion
+  response was inspected in code; physical OS preference acceptance remains pending.
+- Wave completion was simulated; difficulty and the combined weather effects
+  have not received a full human accessibility or visual-sensitivity assessment.
 
 Tests cover invalid modes, baseline collision, no double jump in midair, paused
 state invariance, triangle-edge collision, anti-tunneling substeps, approximate

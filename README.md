@@ -1,7 +1,8 @@
 # Pulse runner
 
 An original one-button geometric arcade game for modern browsers. Jump over a
-fixed sequence of spikes and blocks, or fly between gates with timed impulses.
+fixed sequence of spikes and blocks, fly between gates with timed impulses, or
+switch between rideable ceiling and floor surfaces in Wave mode.
 Learn the timing and reach the finish line.
 Canvas 2D art, physics and interface are implemented without runtime dependencies.
 
@@ -9,13 +10,26 @@ Canvas 2D art, physics and interface are implemented without runtime dependencie
 
 - Space, Up arrow, left click or touch on the game canvas: jump.
 - P: pause/resume. R: restart (from the checkpoint when practicing).
-- Choose one of six authored circuits, then Tranquilo, Pulsante or Intenso.
+- Choose one of nine authored circuits, then Tranquilo, Pulsante or Intenso.
 - Circuits 01–03 use grounded jumps. Circuits 04–06 use flight: each press/click/
   touch gives an upward impulse, including in midair; gravity brings you down.
   Repeated discrete inputs are required. Holding a key does not repeat impulses.
   Avoid both pillars of each gate, the floor and ceiling.
 - Flight courses progress from wide openings (Primeiro voo), through alternating
   heights (Ondas no céu), to narrower openings (Voo de precisão).
+- Circuits 07–09 use click-toggle Wave. Start toward the ceiling; every press,
+  click or touch switches the destination between ceiling and floor. There is
+  no gravity. On reaching a surface, the character sticks and slides along it
+  until the next input. Both surfaces are safe, including sloped sections.
+  Separate coral-colored spikes are lethal and alternate between surfaces.
+  Holding a key does not repeat toggles. A colored trail shows your path.
+- Wave practice resumes at the corridor center with a fresh direction. Records
+  remain separated by circuit and speed, and practice never sets a ranked best.
+- Fundo animado enables rain, meteor trails, dim lightning and slow neon breathing
+  across all nine circuits. It saves its setting locally, freezes when paused,
+  and turns off with reduced-motion preference. Reduced motion also removes the
+  Wave trail. Lightning is a small smooth-fading bolt every nine seconds, not a
+  full-screen flash. Weather effects are visual and do not affect collision.
 - Enable practice to unlock safe checkpoints as you advance on the ground.
   Retry from the last checkpoint, or choose Do início to reset the whole run.
   Checkpoints last only for the current session and reset when changing options.
@@ -34,7 +48,7 @@ Canvas 2D art, physics and interface are implemented without runtime dependencie
 - Best percentage is stored locally per circuit and difficulty, when storage is available.
   Practice never updates ranked bests. Original-circuit bests migrate from v0.1.
 
-There are six circuits with different obstacle sequences and three speeds each.
+There are nine circuits with different obstacle sequences and three speeds each.
 The result screen shows progress and jumps for the attempt; finishing offers the
 next circuit. There is no audio/music synchronization, login, network leaderboard or
 in-app purchase. Progress is an informal local best, not a trusted online score.
@@ -63,12 +77,15 @@ does not automatically make that hosted preview public.
 - src/records.js: validated local records, migration and practice exclusion.
 - src/cosmetics.js: original skin artwork and bounded collision fragment data.
 - src/audio.js: Web Audio synthesis, look-ahead sequencer and voice cleanup.
+- src/atmosphere.js: bounded decorative rain, meteors, lightning and neon.
 - src/style.css: responsive arcade page, reduced decorative motion.
 - tests/engine.test.mjs: 15 tests, including all circuits at every speed and checkpoint recovery.
 - tests/audio.test.mjs: 3 lifecycle tests for opt-in, pause cleanup, mute, effects
   independence and late activation. These use an audio-context double, not speakers.
 - tests/flight.test.mjs: 6 tests covering midair impulses, floor/ceiling and gate
   collision, completion at each speed, practice recovery and record separation.
+- tests/wave.test.mjs: 8 tests for toggles, adhesion and surface sliding, obstacle
+  collision, completion at each speed, checkpoint recovery, render rates and records.
 
 The soundtrack combines synthesized kick, snare, hats, bass and a melodic minor
 progression. No recordings or external music services are used. A short look-ahead
@@ -86,6 +103,9 @@ Flight has its own gravity and impulse strength. Its arena is 300 logical units
 high, scaled vertically to the canvas so a smaller screen never changes collision
 geometry or available flight space. Gate openings and difficulty are authored,
 not random. Simulated completion demonstrates feasibility, not human balancing.
+Wave shares that fixed arena but uses linear movement with a constant diagonal
+slope. Surface contact clamps the square into the corridor without ending the
+run; hazards use triangle collision. The soundtrack remains independent of input.
 
 ## Next possible increments
 

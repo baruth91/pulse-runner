@@ -10,10 +10,13 @@ import {
   SIZE,
   FLIGHT_HEIGHT,
   isFlight,
+  isWave,
+  isAirborne,
 } from "./engine.js";
 import { readRecords, recordAttempt, recordKey } from "./records.js";
 import { SKINS, getSkin, drawSkin, createFragments } from "./cosmetics.js";
 import { GameAudio } from "./audio.js";
+import { drawAtmosphere } from "./atmosphere.js";
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const overlay = document.getElementById("overlay");
@@ -21,7 +24,36 @@ const play = document.getElementById("play");
 const pauseButton = document.getElementById("pause");
 const help = document.getElementById("help-dialog");
 const status = document.getElementById("status");
-const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const motionQuery = matchMedia("(prefers-reduced-motion: reduce)");
+let reduced = motionQuery.matches;
+let atmosphereEnabled = storedRecords("pulse-runner-atmosphere-v1") !== false;
+let sceneTime = 0;
+let trail = [];
+const atmosphereToggle = document.getElementById("atmosphere-toggle");
+function updateAtmosphereControl() {
+  atmosphereToggle.checked = atmosphereEnabled && !reduced;
+  atmosphereToggle.disabled = reduced;
+  document.getElementById("atmosphere-note").textContent = reduced
+    ? "Movimento reduzido ativo: efeitos de fundo e rastro desativados."
+    : "Chuva, meteoros, relâmpagos suaves e neon · apenas visuais";
+}
+atmosphereToggle.addEventListener("change", (event) => {
+  atmosphereEnabled = event.target.checked;
+  try {
+    localStorage.setItem(
+      "pulse-runner-atmosphere-v1",
+      JSON.stringify(atmosphereEnabled),
+    );
+  } catch {
+    /* Optional preference. */
+  }
+});
+motionQuery.addEventListener("change", (event) => {
+  reduced = event.matches;
+  trail = [];
+  updateAtmosphereControl();
+});
+updateAtmosphereControl();
 const audio = new GameAudio();
 const soundButton = document.getElementById("sound-toggle");
 const soundStatus = document.getElementById("sound-status");
@@ -198,6 +230,7 @@ function overlayText(kicker, title, description, button) {
 }
 function start() {
   impact = null;
+  if (state.status !== "paused") trail = [];
   if (state.status === "paused") state.status = "running";
   else {
     if (state.status !== "ready") state = restartState(state);
@@ -215,9 +248,11 @@ function start() {
   pauseButton.setAttribute("aria-label", "Pausar jogo");
   status.textContent = practice
     ? "Treino ativo · checkpoints não contam para recordes"
-    : isFlight(levelId)
-      ? "Em voo · toque para subir · sem tocar, você cai"
-      : "No circuito · espaço / clique / toque para saltar";
+    : isWave(levelId)
+      ? "Wave · cada toque alterna subir / descer"
+      : isFlight(levelId)
+        ? "Em voo · toque para subir · sem tocar, você cai"
+        : "No circuito · espaço / clique / toque para saltar";
   updateRecords();
   lastTime = performance.now();
   canvas.focus({ preventScroll: true });
@@ -261,6 +296,7 @@ function jump() {
 function selectRun() {
   audio.silence();
   impact = null;
+  trail = [];
   state = createState(mode, levelId, practice);
   obstacles = createLevel(levelId);
   attempts = 0;
@@ -268,14 +304,19 @@ function selectRun() {
   document.getElementById("attempts").textContent = "00";
   const level = getLevel(levelId);
   const flight = isFlight(levelId);
-  document.getElementById("control-note").textContent = flight
-    ? "MODO VOO · Cada toque dá um impulso para cima. Soltou? Você cai. Evite o chão, o teto e os portais."
-    : "MODO SALTO · Espaço, ↑, clique ou toque para saltar do chão.";
+  const wave = isWave(levelId);
+  document.getElementById("control-note").textContent = wave
+    ? "MODO WAVE · Cada clique alterna teto / chão. Você gruda e desliza até clicar de novo. Só os obstáculos coral causam falha."
+    : flight
+      ? "MODO VOO · Cada toque dá um impulso para cima. Soltou? Você cai. Evite o chão, o teto e os portais."
+      : "MODO SALTO · Espaço, ↑, clique ou toque para saltar do chão.";
   canvas.setAttribute(
     "aria-label",
-    flight
-      ? "Jogo de voo. Use espaço, seta para cima, clique ou toque para impulsionar. Sem impulso, você cai. P pausa e R reinicia."
-      : "Jogo de saltos. Use espaço ou seta para cima para saltar, P para pausar e R para reiniciar.",
+    wave
+      ? "Jogo Wave. Cada espaço, seta para cima, clique ou toque alterna a direção diagonal. P pausa e R reinicia."
+      : flight
+        ? "Jogo de voo. Use espaço, seta para cima, clique ou toque para impulsionar. Sem impulso, você cai. P pausa e R reinicia."
+        : "Jogo de saltos. Use espaço ou seta para cima para saltar, P para pausar e R para reiniciar.",
   );
   document.getElementById("level-number").textContent =
     `FASE ${level.number}${practice ? " · TREINO" : ""}`;
@@ -302,10 +343,12 @@ function selectRun() {
     practice ? "APRENDA UM TRECHO DE CADA VEZ" : `CIRCUITO ${level.number}`,
     level.name,
     practice
-      ? `Checkpoints guardam seu avanço nesta sessão. ${flight ? "Cada toque impulsiona para cima. Sem tocar, você cai." : "Após errar, continue do último trecho salvo."}`
-      : flight
-        ? `${level.description} Cada toque impulsiona para cima; sem tocar, você cai. Evite também o chão e o teto.`
-        : level.description,
+      ? `Checkpoints guardam seu avanço nesta sessão. ${wave ? "Cada toque alterna subir e descer. Retome no centro do túnel." : flight ? "Cada toque impulsiona para cima. Sem tocar, você cai." : "Após errar, continue do último trecho salvo."}`
+      : wave
+        ? `${level.description} Começa indo ao teto. Cada toque alterna a superfície. Grude e deslize no teto ou no chão; desvie dos obstáculos coral.`
+        : flight
+          ? `${level.description} Cada toque impulsiona para cima; sem tocar, você cai. Evite também o chão e o teto.`
+          : level.description,
     "Começar a jogar →",
   );
   updateRecords();
@@ -404,7 +447,9 @@ function line(x1, y1, x2, y2, color, lineWidth = 1) {
 }
 function draw() {
   const flight = isFlight(levelId);
-  const sceneHeight = flight ? FLIGHT_HEIGHT + 60 : height;
+  const wave = isWave(levelId);
+  const airborne = isAirborne(levelId);
+  const sceneHeight = airborne ? FLIGHT_HEIGHT + 60 : height;
   const scaleX = canvas.width / width,
     scaleY = canvas.height / sceneHeight;
   ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
@@ -413,10 +458,18 @@ function draw() {
     playerX = Math.min(110, width * 0.18),
     shift = state.distance;
   const gradient = ctx.createLinearGradient(0, 0, 0, sceneHeight);
-  gradient.addColorStop(0, flight ? "#142530" : "#15221c");
+  gradient.addColorStop(0, wave ? "#241a34" : flight ? "#142530" : "#15221c");
   gradient.addColorStop(1, "#1b2b21");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, sceneHeight);
+  if (atmosphereEnabled && !reduced)
+    drawAtmosphere(
+      ctx,
+      width,
+      floor,
+      sceneTime,
+      wave ? "#d8a0ff" : flight ? "#79dfff" : "#b9f278",
+    );
   const drift = reduced ? 0 : shift * 0.16;
   for (let x = -80 - (drift % 90); x < width; x += 90)
     line(x, 0, x, sceneHeight, "#b9f27807");
@@ -437,17 +490,42 @@ function draw() {
   ctx.fillStyle = "#101b15";
   ctx.fillRect(0, floor, width, sceneHeight - floor);
   line(0, floor, width, floor, "#b9f27888", 1);
-  if (flight) line(0, 1, width, 1, "#ff9b80", 2);
+  if (airborne) line(0, 1, width, 1, wave ? "#d8a0ff" : "#ff9b80", 2);
   for (let x = -((shift * 0.6) % 40); x < width; x += 40)
     line(x, floor + 20, x + 12, floor + 20, "#66835630");
   for (const obstacle of obstacles) {
     const x = obstacle.x - shift + playerX;
-    if (x < -100 || x > width + 100) continue;
+    if (x + obstacle.width < -20 || x > width + 100) continue;
     ctx.fillStyle = "#ff9b8026";
     ctx.strokeStyle = "#ff9b80";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    if (obstacle.type === "gate") {
+    if (obstacle.type === "wave-hazard") {
+      const base =
+        obstacle.side === "floor" ? obstacle.y : obstacle.y + obstacle.height;
+      const tip =
+        obstacle.side === "floor" ? obstacle.y + obstacle.height : obstacle.y;
+      ctx.fillStyle = "#ff9b8060";
+      ctx.strokeStyle = "#ff9b80";
+      ctx.lineWidth = 2;
+      ctx.moveTo(x, floor - base);
+      ctx.lineTo(x + obstacle.width, floor - base);
+      ctx.lineTo(x + obstacle.width / 2, floor - tip);
+      ctx.closePath();
+    } else if (obstacle.type === "corridor") {
+      ctx.fillStyle = "#d8a0ff16";
+      ctx.strokeStyle = "#d8a0ff";
+      ctx.moveTo(x, floor);
+      ctx.lineTo(x + obstacle.width, floor);
+      ctx.lineTo(x + obstacle.width, floor - obstacle.bottomEnd);
+      ctx.lineTo(x, floor - obstacle.bottom);
+      ctx.closePath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + obstacle.width, 0);
+      ctx.lineTo(x + obstacle.width, floor - obstacle.topEnd);
+      ctx.lineTo(x, floor - obstacle.top);
+      ctx.closePath();
+    } else if (obstacle.type === "gate") {
       ctx.rect(x, floor - obstacle.bottom, obstacle.width, obstacle.bottom);
       ctx.rect(x, 0, obstacle.width, FLIGHT_HEIGHT - obstacle.top);
     } else if (obstacle.type === "spike") {
@@ -485,6 +563,22 @@ function draw() {
         floor - 7,
         "#ff9b8055",
       );
+  }
+  if (wave && !reduced && trail.length > 1) {
+    ctx.save();
+    ctx.strokeStyle = skin.color;
+    ctx.lineWidth = 3;
+    ctx.globalAlpha = 0.6;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    trail.forEach((point, index) => {
+      const x = point.x - shift + playerX + SIZE / 2,
+        y = floor - point.y - SIZE / 2;
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.restore();
   }
   if (practice)
     for (const point of checkpointDistances(levelId)) {
@@ -563,6 +657,21 @@ function frame(timestamp) {
   lastTime = timestamp;
   const previous = state.status;
   update(state, elapsed, obstacles);
+  if (isWave(levelId) && state.status === "running") {
+    const surface = state.direction === 1 ? "teto" : "chão";
+    status.textContent = `${state.attached ? "Deslizando no" : "Indo para o"} ${surface} · toque para trocar${practice ? " · treino" : ""}`;
+  }
+  if (previous === "running") {
+    sceneTime += Math.min(Math.max(elapsed, 0), 0.1);
+    if (
+      isWave(levelId) &&
+      !reduced &&
+      (!trail.length || state.distance - trail.at(-1).x >= 4)
+    ) {
+      trail.push({ x: state.distance, y: state.y });
+      if (trail.length > 100) trail.shift();
+    }
+  }
   if (impact) {
     impact.age += Math.min(Math.max(elapsed, 0), 0.1);
     if (state.status === "dead" && overlay.hidden && impact.age >= 0.65) {
@@ -616,7 +725,7 @@ function frame(timestamp) {
       document.getElementById("next-level").hidden = false;
     }
     const summary = document.getElementById("result-summary");
-    summary.textContent = `${progress()}% · ${state.jumps} ${isFlight(levelId) ? "impulsos" : "saltos"} nesta tentativa · ${practice ? "treino" : "sem assistência"}`;
+    summary.textContent = `${progress()}% · ${state.jumps} ${isWave(levelId) ? "trocas" : isFlight(levelId) ? "impulsos" : "saltos"} nesta tentativa · ${practice ? "treino" : "sem assistência"}`;
     summary.hidden = false;
     if (state.status === "dead" && !reduced) overlay.hidden = true;
     else if (document.activeElement === canvas)

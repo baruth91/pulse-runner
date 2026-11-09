@@ -37,7 +37,7 @@
       </section>
       <section class="circuit-picker" aria-label="Escolher circuito">
         <div class="picker-header">
-          <p class="eyebrow">SEIS CIRCUITOS. SALTE OU VOE.</p>
+          <p class="eyebrow">NOVE CIRCUITOS. SALTO, VOO E WAVE.</p>
           <label class="practice-switch"
             ><input
               id="practice"
@@ -83,6 +83,21 @@
             <small>Passagens menores. Encontre a cadência dos impulsos.</small>
             <span class="level-best" id="best-airflow">Melhor: 0%</span>
           </button>
+          <button data-level="wave-start" aria-pressed="false">
+            <span>07 · WAVE</span><strong>Primeira onda</strong>
+            <small>Alterne a direção. Encontre seu zigue-zague.</small>
+            <span class="level-best" id="best-wave-start">Melhor: 0%</span>
+          </button>
+          <button data-level="wave-neon" aria-pressed="false">
+            <span>08 · WAVE</span><strong>Serpente neon</strong>
+            <small>Siga as curvas de um túnel em diagonal.</small>
+            <span class="level-best" id="best-wave-neon">Melhor: 0%</span>
+          </button>
+          <button data-level="wave-storm" aria-pressed="false">
+            <span>09 · WAVE</span><strong>Onda de precisão</strong>
+            <small>Um corredor mais estreito para dominar as trocas.</small>
+            <span class="level-best" id="best-wave-storm">Melhor: 0%</span>
+          </button>
         </div>
         <p id="practice-note" class="mode-note">
           Treine os trechos com checkpoints. Recordes valem apenas sem treino.
@@ -127,6 +142,15 @@
         >
         <span id="sound-status" class="mode-note" role="status"
           >Trilha original · 128 BPM · ative o som para ouvir</span
+        >
+      </section>
+      <section class="visual-controls" aria-label="Configurar efeitos visuais">
+        <label
+          ><input id="atmosphere-toggle" type="checkbox" checked /> Fundo
+          animado</label
+        >
+        <span id="atmosphere-note" class="mode-note"
+          >Chuva, meteoros, relâmpagos suaves e neon · apenas visuais</span
         >
       </section>
       <p id="control-note" class="control-note">
@@ -255,6 +279,19 @@
         <li>
           No voo, atravesse a abertura dos portais. Tocar o chão ou o teto
           encerra a tentativa. Chegue a 100% para completar.
+        </li>
+        <li>
+          Nas fases 07–09, o modo Wave começa subindo em diagonal. Cada clique,
+          toque ou espaço alterna a direção, sem gravidade. Segurar não repete
+          trocas. O personagem gruda e desliza no teto ou no chão até o próximo
+          clique. As superfícies não matam; só os obstáculos coral encerram a
+          tentativa.
+        </li>
+        <li>
+          No treino Wave, o checkpoint retoma no centro do corredor. “Fundo
+          animado” controla chuva, meteoros, neon e relâmpagos suaves. Esses
+          efeitos pausam junto com a partida e são desativados com movimento
+          reduzido.
         </li>
         <li>Ao trocar de aba, a partida pausa automaticamente.</li>
         <li>
