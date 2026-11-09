@@ -631,3 +631,50 @@ dialog li {
     transition: none;
   }
 }
+.skin-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 0 0 22px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.skin-picker .eyebrow {
+  margin: 0 0 4px;
+  font-size: 9px;
+}
+.skin-picker .mode-note {
+  margin: 0;
+}
+#skin-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#skin-buttons button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 4px 12px 4px 4px;
+  font-size: 11px;
+}
+#skin-buttons button[aria-pressed="true"] {
+  border-color: var(--mint);
+  background: #b9f27812;
+}
+#skin-buttons canvas {
+  width: 32px;
+  height: 32px;
+}
+#skin-status {
+  flex-basis: 100%;
+}
+#skin-status:empty {
+  display: none;
+}

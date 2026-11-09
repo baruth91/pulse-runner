@@ -10,6 +10,7 @@ import {
   SIZE,
 } from "./engine.js";
 import { readRecords, recordAttempt, recordKey } from "./records.js";
+import { SKINS, getSkin, drawSkin, createFragments } from "./cosmetics.js";
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const overlay = document.getElementById("overlay");
@@ -18,6 +19,46 @@ const pauseButton = document.getElementById("pause");
 const help = document.getElementById("help-dialog");
 const status = document.getElementById("status");
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let skin = getSkin(storedRecords("pulse-runner-skin-v1"));
+let impact = null;
+function selectSkin(id, announce = true) {
+  skin = getSkin(id);
+  let saved = true;
+  try {
+    localStorage.setItem("pulse-runner-skin-v1", JSON.stringify(skin.id));
+  } catch {
+    saved = false;
+  }
+  document
+    .querySelectorAll("[data-skin]")
+    .forEach((button) =>
+      button.setAttribute(
+        "aria-pressed",
+        String(button.dataset.skin === skin.id),
+      ),
+    );
+  document.getElementById("skin-status").textContent = announce
+    ? `${skin.name} selecionada · ${saved ? "salva neste navegador" : "válida nesta sessão"}`
+    : "";
+}
+for (const option of SKINS) {
+  const button = document.createElement("button");
+  button.dataset.skin = option.id;
+  const preview = document.createElement("canvas");
+  preview.width = 40;
+  preview.height = 40;
+  preview.setAttribute("aria-hidden", "true");
+  const context = preview.getContext("2d");
+  context.translate(20, 20);
+  drawSkin(context, option);
+  button.append(preview, document.createTextNode(option.name));
+  button.addEventListener("click", () => {
+    pause();
+    selectSkin(option.id);
+  });
+  document.getElementById("skin-buttons").append(button);
+}
+selectSkin(skin.id, false);
 let mode = "pulse",
   levelId = "circuit",
   practice = false;
@@ -78,6 +119,7 @@ function overlayText(kicker, title, description, button) {
   overlay.hidden = false;
 }
 function start() {
+  impact = null;
   if (state.status === "paused") state.status = "running";
   else {
     if (state.status !== "ready") state = restartState(state);
@@ -124,6 +166,7 @@ function jump() {
   else start();
 }
 function selectRun() {
+  impact = null;
   state = createState(mode, levelId, practice);
   obstacles = createLevel(levelId);
   attempts = 0;
@@ -347,20 +390,34 @@ function draw() {
     Math.PI * 2,
   );
   ctx.fill();
-  ctx.save();
-  ctx.translate(playerX + SIZE / 2, floor - state.y - SIZE / 2);
-  ctx.rotate(reduced ? 0 : state.rotation);
-  ctx.fillStyle = state.status === "dead" ? "#ff9b80" : "#b9f278";
-  ctx.shadowColor = state.status === "dead" ? "#ff9b80" : "#b9f278";
-  ctx.shadowBlur = reduced ? 0 : 18;
-  ctx.fillRect(-SIZE / 2, -SIZE / 2, SIZE, SIZE);
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = "#152719";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(-9, -9, 18, 18);
-  ctx.fillStyle = "#172211";
-  ctx.fillRect(3, -5, 4, 4);
-  ctx.restore();
+  if (state.status !== "dead" || reduced) {
+    ctx.save();
+    ctx.translate(playerX + SIZE / 2, floor - state.y - SIZE / 2);
+    ctx.rotate(reduced ? 0 : state.rotation);
+    ctx.shadowColor = skin.color;
+    ctx.shadowBlur = reduced ? 0 : 18;
+    drawSkin(ctx, skin, SIZE);
+    ctx.restore();
+  } else if (impact) {
+    const t = impact.age;
+    for (const fragment of impact.fragments) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - t / 0.85);
+      ctx.translate(
+        playerX + SIZE / 2 + fragment.x + fragment.vx * t,
+        floor -
+          impact.y -
+          SIZE / 2 +
+          fragment.y +
+          fragment.vy * t +
+          260 * t * t,
+      );
+      ctx.rotate(fragment.spin * t);
+      ctx.fillStyle = impact.color;
+      ctx.fillRect(-3.5, -3.5, 7, 7);
+      ctx.restore();
+    }
+  }
   if (state.status === "ready") {
     ctx.fillStyle = "#a8bd9c";
     ctx.font = "9px system-ui";
@@ -372,6 +429,14 @@ function frame(timestamp) {
   lastTime = timestamp;
   const previous = state.status;
   update(state, elapsed, obstacles);
+  if (impact) {
+    impact.age += Math.min(Math.max(elapsed, 0), 0.1);
+    if (state.status === "dead" && overlay.hidden && impact.age >= 0.65) {
+      overlay.hidden = false;
+      if (document.activeElement === canvas)
+        play.focus({ preventScroll: true });
+    }
+  }
   if (state.checkpoint > lastCheckpoint) {
     lastCheckpoint = state.checkpoint;
     updateRecords();
@@ -383,6 +448,12 @@ function frame(timestamp) {
     saveBest();
     pauseButton.disabled = true;
     if (state.status === "dead") {
+      impact = {
+        age: 0,
+        y: state.y,
+        color: skin.color,
+        fragments: createFragments(),
+      };
       status.textContent = `Tentativa encerrada · ${progress()}%${practice ? " · treino" : ""}`;
       overlayText(
         practice ? "UM TRECHO DE CADA VEZ" : "O PRÓXIMO SALTO VEM AÍ",
@@ -411,7 +482,9 @@ function frame(timestamp) {
     const summary = document.getElementById("result-summary");
     summary.textContent = `${progress()}% · ${state.jumps} saltos nesta tentativa · ${practice ? "treino" : "sem assistência"}`;
     summary.hidden = false;
-    if (document.activeElement === canvas) play.focus({ preventScroll: true });
+    if (state.status === "dead" && !reduced) overlay.hidden = true;
+    else if (document.activeElement === canvas)
+      play.focus({ preventScroll: true });
   }
   const current = progress();
   document.getElementById("progress").style.width = `${current}%`;

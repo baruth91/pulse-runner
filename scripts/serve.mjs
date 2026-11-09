@@ -6,6 +6,7 @@ const types = {
   "/game.js": ["game.js", "text/javascript"],
   "/engine.js": ["engine.js", "text/javascript"],
   "/records.js": ["records.js", "text/javascript"],
+  "/cosmetics.js": ["cosmetics.js", "text/javascript"],
 };
 createServer(async (request, response) => {
   const file = types[request.url];
