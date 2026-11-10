@@ -172,10 +172,35 @@ test("Wave movement stays equivalent across render rates", () => {
     return state;
   });
   for (const state of states) {
-    assert.ok(Math.abs(state.y - 135) < 1.5);
+    assert.ok(Math.abs(state.y - states[0].y) < 1.5);
     assert.ok(Math.abs(state.distance - SPEEDS.pulse) < 1.5);
     assert.equal(state.jumps, 1);
   }
+});
+
+test("Wave switches between corridor surfaces in under a tenth of a second", () => {
+  for (const level of levels)
+    for (const mode of Object.keys(SPEEDS)) {
+      const walls = createLevel(level.id);
+      const state = createState(mode, level.id);
+      state.status = "running";
+      state.y = waveBounds(0, walls).top;
+      requestJump(state);
+      update(state, 0.09, walls);
+      assert.equal(
+        state.attached,
+        "floor",
+        `${level.id}/${mode}: fast descent`,
+      );
+      requestJump(state);
+      update(state, 0.09, walls);
+      assert.equal(
+        state.attached,
+        "ceiling",
+        `${level.id}/${mode}: fast ascent`,
+      );
+      assert.equal(state.status, "running");
+    }
 });
 
 test("Wave scores stay isolated from flight and practice", () => {

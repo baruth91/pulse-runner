@@ -22,6 +22,8 @@ Canvas 2D art, physics and interface are implemented without runtime dependencie
   no gravity. On reaching a surface, the character sticks and slides along it
   until the next input. Both surfaces are safe, including sloped sections.
   Separate coral-colored spikes are lethal and alternate between surfaces.
+  Vertical traversal is steep and near-instant: typically about 30–75 milliseconds
+  between surfaces, while horizontal scrolling keeps the selected speed.
   Holding a key does not repeat toggles. A colored trail shows your path.
 - Wave practice resumes at the corridor center with a fresh direction. Records
   remain separated by circuit and speed, and practice never sets a ranked best.
@@ -84,7 +86,7 @@ does not automatically make that hosted preview public.
   independence and late activation. These use an audio-context double, not speakers.
 - tests/flight.test.mjs: 6 tests covering midair impulses, floor/ceiling and gate
   collision, completion at each speed, practice recovery and record separation.
-- tests/wave.test.mjs: 8 tests for toggles, adhesion and surface sliding, obstacle
+- tests/wave.test.mjs: 9 tests for toggles, fast traversal, adhesion and surface sliding, obstacle
   collision, completion at each speed, checkpoint recovery, render rates and records.
 
 The soundtrack combines synthesized kick, snare, hats, bass and a melodic minor

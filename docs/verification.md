@@ -1,8 +1,8 @@
 # Verification
 
-Latest verification: 2026-11-09 (v0.6.0).
+Latest verification: 2026-11-09 (v0.6.1).
 
-- Thirty-two tests passed (15 jumping/records, 6 flight, 8 Wave, 3 audio lifecycle).
+- Thirty-three tests passed (15 jumping/records, 6 flight, 9 Wave, 3 audio lifecycle).
 - Static build completed without dependency installation.
 - Simulation verifies all nine circuits can be completed at all three speeds.
 - Every practice checkpoint can restart safely and finish at the fastest speed.
@@ -44,6 +44,10 @@ Latest verification: 2026-11-09 (v0.6.0).
   response was inspected in code; physical OS preference acceptance remains pending.
 - Wave completion was simulated; difficulty and the combined weather effects
   have not received a full human accessibility or visual-sensitivity assessment.
+- v0.6.1 increases vertical Wave speed to eight times horizontal speed. A timing
+  test verifies floor-to-ceiling and ceiling-to-floor adhesion within 90 ms in
+  all three Wave courses at every speed. Completion, checkpoints and collisions
+  were rechecked through the suite. This timing adjustment was not browser-playtested.
 
 Tests cover invalid modes, baseline collision, no double jump in midair, paused
 state invariance, triangle-edge collision, anti-tunneling substeps, approximate

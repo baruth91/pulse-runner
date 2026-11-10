@@ -8,7 +8,8 @@ export const FIXED_STEP = 1 / 240;
 export const FLIGHT_HEIGHT = 300;
 export const FLIGHT_GRAVITY = 800;
 export const FLIGHT_IMPULSE = 250;
-export const WAVE_SLOPE = 0.75;
+// A steep traversal: surface-to-surface movement takes roughly 30–75 ms.
+export const WAVE_SLOPE = 8;
 export const LEVELS = [
   {
     id: "circuit",
