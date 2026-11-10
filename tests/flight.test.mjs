@@ -78,7 +78,7 @@ test("gate collision includes both pillars but permits the opening", () => {
 });
 
 test("all three flight courses finish at every speed using timed impulses", () => {
-  assert.equal(flightLevels.length, 3);
+  assert.equal(flightLevels.length, 24);
   for (const level of flightLevels) {
     const gates = createLevel(level.id);
     assert.ok(

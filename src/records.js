@@ -1,4 +1,4 @@
-import { LEVELS, SPEEDS } from "./engine.js";
+import { LEVELS, SPEEDS, getLevel } from "./engine.js";
 export function recordKey(level, mode) {
   return `${level}:${mode}`;
 }
@@ -18,15 +18,11 @@ export function readRecords(value, legacy = null) {
 }
 export function recordAttempt(records, state) {
   const next = { ...records };
-  if (state.practice) return next;
+  if (state.practice || getLevel(state.level).custom) return next;
   const key = recordKey(state.level, state.mode);
   const percentage = Math.min(
     100,
-    Math.floor(
-      (state.distance /
-        LEVELS.find((level) => level.id === state.level).finish) *
-        100,
-    ),
+    Math.floor((state.distance / getLevel(state.level).finish) * 100),
   );
   next[key] = Math.max(next[key] || 0, percentage);
   return next;

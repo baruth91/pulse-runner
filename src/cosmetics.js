@@ -28,11 +28,61 @@ export const SKINS = [
     ink: "#452317",
     pattern: "stripes",
   },
+  { id: "hex", name: "Hexa", color: "#7fffd4", ink: "#153d37", shape: 6 },
+  { id: "prism", name: "Prisma", color: "#ff91ce", ink: "#481c38", shape: 3 },
+  {
+    id: "orbit",
+    name: "Órbita",
+    color: "#ffe580",
+    ink: "#443a14",
+    shape: "circle",
+  },
+  { id: "pentagon", name: "Penta", color: "#a5acff", ink: "#242957", shape: 5 },
+  { id: "octagon", name: "Octa", color: "#ff7979", ink: "#481d1d", shape: 8 },
+  {
+    id: "star",
+    name: "Estrela",
+    color: "#f2c0ff",
+    ink: "#3d1e46",
+    shape: "star",
+  },
+  { id: "kite", name: "Cometa", color: "#75ddff", ink: "#133b49", shape: 4 },
+  { id: "ring", name: "Anel", color: "#e0ffad", ink: "#30451b", shape: "ring" },
 ];
 export function getSkin(id) {
   return SKINS.find((skin) => skin.id === id) || SKINS[0];
 }
 export function drawSkin(ctx, skin, size = 30) {
+  if (skin.shape) {
+    ctx.save();
+    ctx.scale(size / 30, size / 30);
+    ctx.fillStyle = skin.color;
+    ctx.strokeStyle = skin.ink;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (skin.shape === "circle" || skin.shape === "ring")
+      ctx.arc(0, 0, 15, 0, Math.PI * 2);
+    else {
+      const count = skin.shape === "star" ? 10 : skin.shape;
+      for (let i = 0; i < count; i++) {
+        const angle = -Math.PI / 2 + (i * Math.PI * 2) / count;
+        const radius = skin.shape === "star" && i % 2 ? 8 : 15;
+        if (i === 0)
+          ctx.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+        else ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+      }
+      ctx.closePath();
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = skin.ink;
+    ctx.beginPath();
+    ctx.arc(0, 0, skin.shape === "ring" ? 9 : 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
   ctx.fillStyle = skin.color;
   ctx.fillRect(-size / 2, -size / 2, size, size);
   ctx.strokeStyle = skin.ink;

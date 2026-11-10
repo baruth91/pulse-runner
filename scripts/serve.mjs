@@ -9,6 +9,10 @@ const types = {
   "/cosmetics.js": ["cosmetics.js", "text/javascript"],
   "/audio.js": ["audio.js", "text/javascript"],
   "/atmosphere.js": ["atmosphere.js", "text/javascript"],
+  "/catalog.js": ["catalog.js", "text/javascript"],
+  "/catalog-ui.js": ["catalog-ui.js", "text/javascript"],
+  "/creator.js": ["creator.js", "text/javascript"],
+  "/creator-ui.js": ["creator-ui.js", "text/javascript"],
 };
 createServer(async (request, response) => {
   const file = types[request.url];

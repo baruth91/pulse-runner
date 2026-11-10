@@ -12,10 +12,15 @@ import {
   isFlight,
   isWave,
   isAirborne,
+  activeObstacles,
+  registerCustomLevel,
+  levelKind,
 } from "./engine.js";
 import { readRecords, recordAttempt, recordKey } from "./records.js";
 import { SKINS, getSkin, drawSkin, createFragments } from "./cosmetics.js";
 import { GameAudio } from "./audio.js";
+import { mountCreator } from "./creator-ui.js";
+import { mountCatalog } from "./catalog-ui.js";
 import { drawAtmosphere } from "./atmosphere.js";
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -179,6 +184,7 @@ let attempts = 0,
   width = 1100,
   height = 360;
 let best = readRecords(null);
+let refreshCatalog = () => {};
 let lastCheckpoint = 0;
 document.getElementById("practice").checked = false;
 function storedRecords(key) {
@@ -204,10 +210,12 @@ function updateRecords() {
     : "MELHOR";
   document.getElementById("best").textContent = practice
     ? `${Math.floor((state.checkpoint / getLevel(levelId).finish) * 100)}%`
-    : `${best[recordKey(levelId, mode)]}%`;
-  for (const level of LEVELS)
-    document.getElementById(`best-${level.id}`).textContent =
-      `Sem treino: ${best[recordKey(level.id, mode)]}%`;
+    : `${best[recordKey(levelId, mode)] || 0}%`;
+  for (const level of LEVELS) {
+    const label = document.getElementById(`best-${level.id}`);
+    if (label)
+      label.textContent = `Melhor: ${best[recordKey(level.id, mode)] || 0}%`;
+  }
 }
 function saveBest() {
   best = recordAttempt(best, state);
@@ -233,7 +241,10 @@ function start() {
   if (state.status !== "paused") trail = [];
   if (state.status === "paused") state.status = "running";
   else {
-    if (state.status !== "ready") state = restartState(state);
+    if (state.status !== "ready") {
+      state = restartState(state);
+      updateRunLabels();
+    }
     state.status = "running";
     attempts++;
     document.getElementById("attempts").textContent = String(attempts).padStart(
@@ -248,9 +259,9 @@ function start() {
   pauseButton.setAttribute("aria-label", "Pausar jogo");
   status.textContent = practice
     ? "Treino ativo · checkpoints não contam para recordes"
-    : isWave(levelId)
+    : isWave(levelId, state.distance)
       ? "Wave · cada toque alterna subir / descer"
-      : isFlight(levelId)
+      : isFlight(levelId, state.distance)
         ? "Em voo · toque para subir · sem tocar, você cai"
         : "No circuito · espaço / clique / toque para saltar";
   updateRecords();
@@ -283,6 +294,7 @@ function pause() {
 function reset(fromBeginning = false) {
   saveBest();
   state = restartState(state, fromBeginning);
+  updateRunLabels();
   start();
 }
 function jump() {
@@ -290,21 +302,13 @@ function jump() {
   if (state.status === "running") requestJump(state);
   else {
     start();
-    if (isFlight(levelId)) requestJump(state);
+    if (isFlight(levelId, state.distance)) requestJump(state);
   }
 }
-function selectRun() {
-  audio.silence();
-  impact = null;
-  trail = [];
-  state = createState(mode, levelId, practice);
-  obstacles = createLevel(levelId);
-  attempts = 0;
-  lastCheckpoint = 0;
-  document.getElementById("attempts").textContent = "00";
+function updateRunLabels() {
   const level = getLevel(levelId);
-  const flight = isFlight(levelId);
-  const wave = isWave(levelId);
+  const flight = isFlight(levelId, state.distance);
+  const wave = isWave(levelId, state.distance);
   document.getElementById("control-note").textContent = wave
     ? "MODO WAVE · Cada clique alterna teto / chão. Você gruda e desliza até clicar de novo. Só os obstáculos coral causam falha."
     : flight
@@ -321,6 +325,32 @@ function selectRun() {
   document.getElementById("level-number").textContent =
     `FASE ${level.number}${practice ? " · TREINO" : ""}`;
   document.getElementById("level-name").textContent = level.name;
+  if (level.custom) {
+    document.getElementById("level-number").textContent =
+      `CREATOR · TRECHO ${state.sectionIndex + 1}/${level.sections.length} · TREINO`;
+    document.getElementById("level-name").textContent =
+      `${level.name} · ${levelKind(levelId, state.distance) === "jump" ? "Salto" : flight ? "Voo" : "Wave"}`;
+  }
+}
+function selectRun() {
+  audio.silence();
+  impact = null;
+  trail = [];
+  state = createState(mode, levelId, practice);
+  document.getElementById("practice").disabled = !!getLevel(levelId).custom;
+  if (getLevel(levelId).custom) {
+    practice = true;
+    state.practice = true;
+    document.getElementById("practice").checked = true;
+  }
+  obstacles = createLevel(levelId);
+  attempts = 0;
+  lastCheckpoint = 0;
+  document.getElementById("attempts").textContent = "00";
+  updateRunLabels();
+  const level = getLevel(levelId),
+    flight = isFlight(levelId, state.distance),
+    wave = isWave(levelId, state.distance);
   document
     .querySelectorAll("[data-level]")
     .forEach((button) =>
@@ -352,6 +382,7 @@ function selectRun() {
     "Começar a jogar →",
   );
   updateRecords();
+  refreshCatalog();
 }
 play.addEventListener("click", start);
 document.getElementById("restart").addEventListener("click", () => reset());
@@ -402,17 +433,23 @@ document.getElementById("help").addEventListener("click", () => {
 document
   .getElementById("close-help")
   .addEventListener("click", () => help.close());
+for (const [id, name] of [
+  ["expert", "Expert"],
+  ["extreme", "Extremo"],
+]) {
+  const button = document.createElement("button");
+  button.dataset.mode = id;
+  button.setAttribute("aria-pressed", "false");
+  button.textContent = name;
+  const small = document.createElement("small");
+  small.textContent = id === "expert" ? "mais velocidade" : "desafio máximo";
+  button.append(small);
+  document.querySelector(".modes").append(button);
+}
 document.querySelectorAll("[data-mode]").forEach((button) =>
   button.addEventListener("click", () => {
     saveBest();
     mode = button.dataset.mode;
-    selectRun();
-  }),
-);
-document.querySelectorAll("[data-level]").forEach((button) =>
-  button.addEventListener("click", () => {
-    saveBest();
-    levelId = button.dataset.level;
     selectRun();
   }),
 );
@@ -422,11 +459,46 @@ document.getElementById("practice").addEventListener("change", (event) => {
   selectRun();
 });
 document.getElementById("next-level").addEventListener("click", () => {
-  const index = LEVELS.findIndex((level) => level.id === levelId);
-  levelId = LEVELS[(index + 1) % LEVELS.length].id;
+  const group = LEVELS.filter(
+    (level) => levelKind(level.id) === levelKind(levelId),
+  );
+  const index = group.findIndex((level) => level.id === levelId);
+  levelId = group[(index + 1) % group.length].id;
   selectRun();
 });
 updateRecords();
+refreshCatalog = mountCatalog(
+  (id) => {
+    saveBest();
+    levelId = id;
+    selectRun();
+  },
+  () => levelId,
+  (id) => best[recordKey(id, mode)] || 0,
+);
+mountCreator((level) => {
+  saveBest();
+  registerCustomLevel(level);
+  levelId = level.id;
+  practice = true;
+  selectRun();
+  document.querySelector(".arena").scrollIntoView({
+    behavior: reduced ? "instant" : "smooth",
+    block: "start",
+  });
+});
+document.getElementById("open-creator").onclick = () => {
+  pause();
+  document.getElementById("creator-panel").hidden = false;
+  document.getElementById("creator-panel").scrollIntoView({
+    behavior: reduced ? "instant" : "smooth",
+    block: "start",
+  });
+};
+document.getElementById("close-creator").onclick = () => {
+  document.getElementById("creator-panel").hidden = true;
+  document.getElementById("open-creator").focus();
+};
 
 function resize() {
   const rect = canvas.getBoundingClientRect(),
@@ -446,9 +518,9 @@ function line(x1, y1, x2, y2, color, lineWidth = 1) {
   ctx.stroke();
 }
 function draw() {
-  const flight = isFlight(levelId);
-  const wave = isWave(levelId);
-  const airborne = isAirborne(levelId);
+  const flight = isFlight(levelId, state.distance);
+  const wave = isWave(levelId, state.distance);
+  const airborne = isAirborne(levelId, state.distance);
   const sceneHeight = airborne ? FLIGHT_HEIGHT + 60 : height;
   const scaleX = canvas.width / width,
     scaleY = canvas.height / sceneHeight;
@@ -493,7 +565,7 @@ function draw() {
   if (airborne) line(0, 1, width, 1, wave ? "#d8a0ff" : "#ff9b80", 2);
   for (let x = -((shift * 0.6) % 40); x < width; x += 40)
     line(x, floor + 20, x + 12, floor + 20, "#66835630");
-  for (const obstacle of obstacles) {
+  for (const obstacle of activeObstacles(state, obstacles)) {
     const x = obstacle.x - shift + playerX;
     if (x + obstacle.width < -20 || x > width + 100) continue;
     ctx.fillStyle = "#ff9b8026";
@@ -599,6 +671,24 @@ function draw() {
       ctx.lineTo(x, floor - 51);
       ctx.fill();
     }
+  if (getLevel(levelId).custom)
+    for (const section of getLevel(levelId).sections.slice(1)) {
+      const x = section.start - shift + playerX;
+      if (x >= -20 && x <= width + 20) {
+        line(x, 10, x, floor, "#79dfff", 2);
+        ctx.fillStyle = "#79dfff";
+        ctx.font = "10px system-ui";
+        ctx.fillText(
+          section.kind === "jump"
+            ? "SALTO"
+            : section.kind === "flight"
+              ? "VOO"
+              : "WAVE",
+          x + 7,
+          25,
+        );
+      }
+    }
   const finishX = getLevel(levelId).finish - shift + playerX;
   if (finishX < width + 30) {
     line(finishX, 30, finishX, floor, "#b9f278", 2);
@@ -655,16 +745,21 @@ function draw() {
 function frame(timestamp) {
   const elapsed = lastTime ? (timestamp - lastTime) / 1000 : 0;
   lastTime = timestamp;
-  const previous = state.status;
+  const previous = state.status,
+    previousSection = state.sectionIndex;
   update(state, elapsed, obstacles);
-  if (isWave(levelId) && state.status === "running") {
+  if (state.sectionIndex !== previousSection) {
+    trail = [];
+    updateRunLabels();
+  }
+  if (isWave(levelId, state.distance) && state.status === "running") {
     const surface = state.direction === 1 ? "teto" : "chão";
     status.textContent = `${state.attached ? "Deslizando no" : "Indo para o"} ${surface} · toque para trocar${practice ? " · treino" : ""}`;
   }
   if (previous === "running") {
     sceneTime += Math.min(Math.max(elapsed, 0), 0.1);
     if (
-      isWave(levelId) &&
+      isWave(levelId, state.distance) &&
       !reduced &&
       (!trail.length || state.distance - trail.at(-1).x >= 4)
     ) {
@@ -725,7 +820,7 @@ function frame(timestamp) {
       document.getElementById("next-level").hidden = false;
     }
     const summary = document.getElementById("result-summary");
-    summary.textContent = `${progress()}% · ${state.jumps} ${isWave(levelId) ? "trocas" : isFlight(levelId) ? "impulsos" : "saltos"} nesta tentativa · ${practice ? "treino" : "sem assistência"}`;
+    summary.textContent = `${progress()}% · ${state.jumps} ${getLevel(levelId).custom ? "ações" : isWave(levelId, state.distance) ? "trocas" : isFlight(levelId, state.distance) ? "impulsos" : "saltos"} nesta tentativa · ${practice ? "treino" : "sem assistência"}`;
     summary.hidden = false;
     if (state.status === "dead" && !reduced) overlay.hidden = true;
     else if (document.activeElement === canvas)

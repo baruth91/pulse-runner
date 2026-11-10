@@ -35,9 +35,61 @@
           </div>
         </div>
       </section>
+      <section
+        id="creator-panel"
+        class="creator-panel"
+        hidden
+        aria-labelledby="creator-heading"
+      >
+        <div class="picker-header">
+          <div>
+            <p class="eyebrow">SEU PRÓPRIO CIRCUITO</p>
+            <h2 id="creator-heading">Creator</h2>
+          </div>
+          <button id="close-creator" class="ghost">Fechar Creator</button>
+        </div>
+        <p class="mode-note">
+          Monte até 3 trechos de 2.000 unidades. Escolha modalidade, desafio e
+          quatro posições de obstáculos. Misture salto, voo e Wave com
+          checkpoints automáticos nas transições. Teste para ajustar sua pista.
+        </p>
+        <div class="creator-toolbar">
+          <label
+            >Nome da pista <input id="creator-title" maxlength="60" /></label
+          ><label
+            >Minhas pistas
+            <select id="creator-saved"></select></label
+          ><button id="creator-new" class="ghost">Nova pista</button>
+        </div>
+        <div id="creator-sections"></div>
+        <button id="creator-add" class="ghost">+ Adicionar trecho</button>
+        <canvas
+          id="creator-map"
+          width="900"
+          height="110"
+          aria-label="Prévia da sequência de trechos e obstáculos"
+        ></canvas>
+        <p id="creator-duration" class="mode-note"></p>
+        <div class="creator-toolbar">
+          <button id="creator-play" class="primary">Testar pista ↓</button
+          ><button id="creator-save" class="ghost">Salvar pista</button
+          ><button id="creator-export" class="ghost">Exportar JSON</button
+          ><label class="import-label"
+            >Importar JSON
+            <input
+              id="creator-import"
+              type="file"
+              accept=".json,application/json"
+          /></label>
+        </div>
+        <p id="creator-message" role="status" class="mode-note">
+          As pistas ficam neste navegador. Exporte uma cópia para guardar ou
+          compartilhar.
+        </p>
+      </section>
       <section class="circuit-picker" aria-label="Escolher circuito">
         <div class="picker-header">
-          <p class="eyebrow">NOVE CIRCUITOS. SALTO, VOO E WAVE.</p>
+          <p class="eyebrow">72 FASES. TRÊS MODALIDADES. SEU DESAFIO.</p>
           <label class="practice-switch"
             ><input
               id="practice"
@@ -47,57 +99,36 @@
             Treino com checkpoints</label
           >
         </div>
+        <div class="catalog-filters">
+          <label
+            >Modalidade
+            <select id="catalog-kind">
+              <option value="jump">Salto · 24 fases</option>
+              <option value="flight">Voo · 24 fases</option>
+              <option value="wave">Wave · 24 fases</option>
+            </select></label
+          >
+          <label
+            >Desafio
+            <select id="catalog-tier">
+              <option value="all">Todos</option>
+              <option value="0">Inicial · 01–08</option>
+              <option value="1">Avançado · 09–16</option>
+              <option value="2">Especialista · 17–24</option>
+            </select></label
+          >
+          <button id="open-creator" class="ghost">Abrir Creator ↗</button>
+        </div>
         <div
           id="level-buttons"
           class="level-buttons"
           role="group"
           aria-label="Circuitos"
-        >
-          <button data-level="circuit" aria-pressed="true">
-            <span>01</span><strong>Circuito inicial</strong
-            ><small>Aprenda o salto e encontre seu tempo.</small
-            ><span class="level-best" id="best-circuit">Melhor: 0%</span>
-          </button>
-          <button data-level="switchback" aria-pressed="false">
-            <span>02</span><strong>Quebra-ritmo</strong
-            ><small>Novas sequências, intervalos diferentes.</small
-            ><span class="level-best" id="best-switchback">Melhor: 0%</span>
-          </button>
-          <button data-level="momentum" aria-pressed="false">
-            <span>03</span><strong>Impulso final</strong
-            ><small>Mais obstáculos. Mais precisão.</small
-            ><span class="level-best" id="best-momentum">Melhor: 0%</span>
-          </button>
-          <button data-level="first-flight" aria-pressed="false">
-            <span>04 · VOO</span><strong>Primeiro voo</strong>
-            <small>Passagens amplas. Aprenda a controlar a altura.</small>
-            <span class="level-best" id="best-first-flight">Melhor: 0%</span>
-          </button>
-          <button data-level="skyline" aria-pressed="false">
-            <span>05 · VOO</span><strong>Ondas no céu</strong>
-            <small>Suba e desça entre portais em alturas alternadas.</small>
-            <span class="level-best" id="best-skyline">Melhor: 0%</span>
-          </button>
-          <button data-level="airflow" aria-pressed="false">
-            <span>06 · VOO</span><strong>Voo de precisão</strong>
-            <small>Passagens menores. Encontre a cadência dos impulsos.</small>
-            <span class="level-best" id="best-airflow">Melhor: 0%</span>
-          </button>
-          <button data-level="wave-start" aria-pressed="false">
-            <span>07 · WAVE</span><strong>Primeira onda</strong>
-            <small>Alterne a direção. Encontre seu zigue-zague.</small>
-            <span class="level-best" id="best-wave-start">Melhor: 0%</span>
-          </button>
-          <button data-level="wave-neon" aria-pressed="false">
-            <span>08 · WAVE</span><strong>Serpente neon</strong>
-            <small>Siga as curvas de um túnel em diagonal.</small>
-            <span class="level-best" id="best-wave-neon">Melhor: 0%</span>
-          </button>
-          <button data-level="wave-storm" aria-pressed="false">
-            <span>09 · WAVE</span><strong>Onda de precisão</strong>
-            <small>Um corredor mais estreito para dominar as trocas.</small>
-            <span class="level-best" id="best-wave-storm">Melhor: 0%</span>
-          </button>
+        ></div>
+        <div class="catalog-pagination">
+          <button id="catalog-prev" class="ghost">← Anterior</button
+          ><span id="catalog-page" aria-live="polite"></span
+          ><button id="catalog-next" class="ghost">Próxima →</button>
         </div>
         <p id="practice-note" class="mode-note">
           Treine os trechos com checkpoints. Recordes valem apenas sem treino.
@@ -107,7 +138,9 @@
       <section class="skin-picker" aria-label="Personalizar personagem">
         <div>
           <p class="eyebrow">SEU PERSONAGEM, SEU ESTILO.</p>
-          <p class="mode-note">Skins gratuitas. Mesmo salto, mesma precisão.</p>
+          <p class="mode-note">
+            12 skins geométricas. Mesma física em todos os formatos.
+          </p>
         </div>
         <div
           id="skin-buttons"
@@ -292,6 +325,11 @@
           animado” controla chuva, meteoros, neon e relâmpagos suaves. Esses
           efeitos pausam junto com a partida e são desativados com movimento
           reduzido.
+        </li>
+        <li>
+          Creator: monte até três trechos. Cada transição troca a modalidade e
+          salva um checkpoint em treino. As pistas são salvas localmente e podem
+          ser exportadas em JSON.
         </li>
         <li>Ao trocar de aba, a partida pausa automaticamente.</li>
         <li>

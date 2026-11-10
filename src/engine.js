@@ -1,7 +1,14 @@
+import { EXTRA_LEVELS, makeCourse } from "./catalog.js";
 export const SIZE = 30;
 export const GRAVITY = 1900;
 export const JUMP = 650;
-export const SPEEDS = { chill: 235, pulse: 285, rush: 335 };
+export const SPEEDS = {
+  chill: 235,
+  pulse: 285,
+  rush: 335,
+  expert: 385,
+  extreme: 435,
+};
 export const FINISH = 7800;
 export const FIXED_STEP = 1 / 240;
 // Flight uses a fixed logical arena, independent of responsive canvas height.
@@ -81,23 +88,59 @@ export const LEVELS = [
     description: "Um corredor mais estreito para dominar as trocas.",
   },
 ];
+LEVELS.push(...EXTRA_LEVELS);
+const customLevels = new Map();
+export function registerCustomLevel(level) {
+  if (
+    !level.custom ||
+    !level.id.startsWith("creator-") ||
+    level.sections.length < 1 ||
+    level.sections.length > 3 ||
+    level.finish > 6000
+  )
+    throw new Error("Invalid custom level");
+  customLevels.set(level.id, level);
+  return level;
+}
 export function getLevel(id = "circuit") {
-  const level = LEVELS.find((item) => item.id === id);
+  const level = customLevels.get(id) || LEVELS.find((item) => item.id === id);
   if (!level) throw new Error("Unknown level");
   return level;
 }
-export function isFlight(level) {
-  return getLevel(level).kind === "flight";
+export function sectionAt(level, distance = 0) {
+  const info = getLevel(level);
+  return info.sections
+    ? Math.max(
+        0,
+        info.sections.findLastIndex((section) => distance >= section.start),
+      )
+    : 0;
 }
-export function isWave(level) {
-  return getLevel(level).kind === "wave";
+export function levelKind(level, distance = 0) {
+  const info = getLevel(level);
+  return info.sections
+    ? info.sections[sectionAt(level, distance)].kind
+    : info.kind || "jump";
 }
-export function isAirborne(level) {
-  return isFlight(level) || isWave(level);
+export function isFlight(level, distance = 0) {
+  return levelKind(level, distance) === "flight";
+}
+export function isWave(level, distance = 0) {
+  return levelKind(level, distance) === "wave";
+}
+export function isAirborne(level, distance = 0) {
+  return isFlight(level, distance) || isWave(level, distance);
+}
+export function activeObstacles(state, obstacles) {
+  return getLevel(state.level).custom
+    ? obstacles.filter((item) => item.section === state.sectionIndex)
+    : obstacles;
 }
 
 export function createLevel(id = "circuit") {
-  getLevel(id);
+  const info = getLevel(id);
+  if (info.custom) return info.obstacles;
+  if (info.generated) return makeCourse(info.kind, info.index, info.finish);
   if (isWave(id)) {
     const config =
       id === "wave-start"
@@ -269,10 +312,15 @@ export function createState(
     checkpointY: isAirborne(level) ? (FLIGHT_HEIGHT - SIZE) / 2 : 0,
     direction: 1,
     attached: null,
+    sectionIndex: 0,
   };
 }
 const checkpointCache = new Map();
 export function checkpointDistances(level = "circuit") {
+  if (getLevel(level).custom)
+    return getLevel(level)
+      .sections.slice(1)
+      .map((section) => section.start);
   if (isWave(level))
     return [0.25, 0.5, 0.75].map(
       (fraction) => getLevel(level).finish * fraction,
@@ -302,9 +350,11 @@ export function restartState(previous, fromBeginning = false) {
   if (previous.practice && !fromBeginning && previous.status !== "won") {
     next.checkpoint = previous.checkpoint;
     next.distance = next.checkpoint;
-    if (isFlight(previous.level) && next.checkpoint > 0)
+    if (getLevel(previous.level).custom)
+      enterSection(next, sectionAt(next.level, next.distance));
+    else if (isFlight(previous.level) && next.checkpoint > 0)
       next.y = next.checkpointY = previous.checkpointY;
-    if (isWave(previous.level) && next.checkpoint > 0) {
+    if (isWave(previous.level, next.distance) && next.checkpoint > 0) {
       const path = wavePath(previous.level, next.distance + SIZE / 2);
       next.y = next.checkpointY = path.center - SIZE / 2;
       next.direction = path.slope < 0 ? -1 : 1;
@@ -314,14 +364,14 @@ export function restartState(previous, fromBeginning = false) {
 }
 export function requestJump(state) {
   if (state.status !== "running") return;
-  if (isWave(state.level)) {
+  if (isWave(state.level, state.distance)) {
     // Toggle immediately: two real taps before a frame must still count twice.
     state.direction *= -1;
     state.jumps++;
   } else state.jumpBuffer = 0.09;
 }
 export function wavePath(level, x) {
-  if (!isWave(level)) throw new Error("Not a Wave level");
+  if (!isWave(level, x)) throw new Error("Not a Wave level");
   const segments = createLevel(level).filter(
     (item) => item.type === "corridor",
   );
@@ -429,23 +479,26 @@ export function collides(state, obstacle) {
 }
 export function update(state, elapsed, obstacles = createLevel(state.level)) {
   if (state.status !== "running") return state;
-  const flight = isFlight(state.level);
-  const wave = isWave(state.level);
-  const gravity = flight ? FLIGHT_GRAVITY : GRAVITY;
   // Long frame gaps never fast-forward the player through an entire level.
   state.accumulator += Math.min(0.1, Math.max(0, elapsed));
   while (state.accumulator >= FIXED_STEP && state.status === "running") {
     state.accumulator -= FIXED_STEP;
+    state.distance += SPEEDS[state.mode] * FIXED_STEP;
+    const section = sectionAt(state.level, state.distance);
+    if (section !== state.sectionIndex) enterSection(state, section);
+    const flight = isFlight(state.level, state.distance),
+      wave = isWave(state.level, state.distance);
+    const gravity = flight ? FLIGHT_GRAVITY : GRAVITY;
+    const currentObstacles = activeObstacles(state, obstacles);
     if (!wave && state.jumpBuffer > 0 && (flight || state.y === 0)) {
       state.velocity = flight ? FLIGHT_IMPULSE : JUMP;
       state.jumps++;
       state.jumpBuffer = 0;
     }
     state.jumpBuffer = Math.max(0, state.jumpBuffer - FIXED_STEP);
-    state.distance += SPEEDS[state.mode] * FIXED_STEP;
     if (wave) {
       state.velocity = state.direction * SPEEDS[state.mode] * WAVE_SLOPE;
-      const bounds = waveBounds(state.distance, obstacles);
+      const bounds = waveBounds(state.distance, currentObstacles);
       state.y = Math.max(
         bounds.bottom,
         Math.min(bounds.top, state.y + state.velocity * FIXED_STEP),
@@ -477,7 +530,7 @@ export function update(state, elapsed, obstacles = createLevel(state.level)) {
       state.rotation =
         Math.round(state.rotation / (Math.PI / 2)) * (Math.PI / 2);
     } else if (!wave) state.rotation += FIXED_STEP * 7;
-    if (obstacles.some((obstacle) => collides(state, obstacle))) {
+    if (currentObstacles.some((obstacle) => collides(state, obstacle))) {
       state.status = "dead";
       break;
     }
@@ -498,4 +551,21 @@ export function update(state, elapsed, obstacles = createLevel(state.level)) {
     }
   }
   return state;
+}
+function enterSection(state, index) {
+  state.sectionIndex = index;
+  state.y = isAirborne(state.level, state.distance)
+    ? (FLIGHT_HEIGHT - SIZE) / 2
+    : 0;
+  if (isWave(state.level, state.distance))
+    state.y =
+      wavePath(state.level, state.distance + SIZE / 2).center - SIZE / 2;
+  state.velocity = 0;
+  state.rotation = 0;
+  state.jumpBuffer = 0;
+  state.direction = 1;
+  state.attached = null;
+  if (state.practice)
+    state.checkpoint = getLevel(state.level).sections[index].start;
+  state.checkpointY = state.y;
 }

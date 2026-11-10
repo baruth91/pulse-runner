@@ -119,7 +119,7 @@ test("Wave surfaces are safe and only separate obstacles are lethal", () => {
 });
 
 test("all three Wave courses complete at every speed with discrete toggles", () => {
-  assert.equal(levels.length, 3);
+  assert.equal(levels.length, 24);
   for (const level of levels)
     for (const mode of Object.keys(SPEEDS)) {
       const state = createState(mode, level.id);

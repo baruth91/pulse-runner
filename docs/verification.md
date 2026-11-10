@@ -1,10 +1,10 @@
 # Verification
 
-Latest verification: 2026-11-09 (v0.6.1).
+Latest verification: 2026-11-10 (v0.7.0).
 
-- Thirty-three tests passed (15 jumping/records, 6 flight, 9 Wave, 3 audio lifecycle).
+- Thirty-eight tests passed (15 jumping/records, 6 flight, 9 Wave, 3 audio lifecycle, 5 catalog/Creator).
 - Static build completed without dependency installation.
-- Simulation verifies all nine circuits can be completed at all three speeds.
+- Simulation verifies all 72 circuits can be completed at all five speeds (360 course/speed combinations).
 - Every practice checkpoint can restart safely and finish at the fastest speed.
 - Tests verify grounded checkpoint acquisition, fresh restart physics, explicit
   full reset, record isolation by level/speed and exclusion of practice results.
@@ -57,3 +57,24 @@ The keyboard/touch handlers share a jump command, but physical touchscreen
 acceptance and broad browser/device testing remain pending. Reduced-motion
 behavior removes decorative spin/parallax, not the essential moving obstacles.
 No claim of full accessibility compliance or professional difficulty balancing.
+
+## v0.7 expansion checks
+
+- Catalog checks verify exactly 24 distinct obstacle layouts per modality, keeping
+  original IDs and records. Expert/Extremo speeds apply to every course.
+- Creator checks cover schema rejection, local-library input sanitization,
+  single-mode tracks, every ordered pair of different modalities, three-mode
+  tracks, and checkpoint retry restoring the correct physics/input state.
+- Default Creator sections finish in all 24 challenge profiles at all five speeds.
+  Arbitrary user-edited obstacle combinations are not guaranteed completable.
+- Browser checks exercised specialist filters, geometric skin selection/persistence,
+  the three-section editor, save/reload/load, JSON export and re-import, playtest,
+  jump-to-flight transition, and flight checkpoint retry. Earlier desktop/narrow
+  screenshots were inspected; no horizontal overflow was observed at the narrow
+  breakpoint. Responsive preview sizing was subsequently checked in the DOM.
+- The final small changes to replay labels, same-modality next-course navigation
+  and jump challenge heights were inspected in source; the latter was covered by
+  the full Creator challenge-profile suite. A full human run of all courses and
+  every editor combination remains outside this smoke verification.
+- No console warnings/errors were captured in the editor checks. A later screenshot
+  capture failed; the saved proof image is from the earlier successful UI pass.
